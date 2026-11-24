@@ -35,7 +35,7 @@ One home screen: a timeline that zooms through four levels, Agenda, Day, Week, &
 └──────────────────────────────────┘
 ```
 
-* **Agenda**: a day-by-day list of events, scheduled & due tasks, & open tasks, as org's agenda shows them. **Saved filters** make it dynamic: each filter is a named set of TODO states, tags, categories, & a date span, like an entry in `org-agenda-custom-commands`. The overflow menu picks the filter.
+* **Agenda**: a day-by-day list of events, scheduled & due tasks, & open tasks, as org's agenda shows them. **Saved filters** make it dynamic: each filter is a named set of TODO states, tags, categories, & a date span, like an entry in `org-agenda-custom-commands`. The overflow menu picks the filter. The starting filters mirror the user's two agenda commands: GTD Dashboard (today's agenda, the `inbox` tag, NEXT, WAITING, & stuck projects per `org-stuck-projects`) & Contexts (NEXT entries grouped by tag).
 * **Day**: an hour grid of one day, w/ untimed records in a band at the top.
 * **Week**: seven day columns on one hour grid.
 * **Month**: a grid of weeks; a tap on a day zooms to Day.
@@ -217,7 +217,3 @@ A move to another heading goes as `org-refile` does: the entry's subtree goes to
 5. Saved agenda filters.
 6. Alarms from `:APPT_WARNTIME:`.
 7. The outline browser: any file's headings as a tree, & the file & heading picker for capture & refile.
-
-## 8. Open questions
-
-1. Whether an address book comes along, & in what file form (one heading per contact w/ properties, as `org-contacts` keeps them, is the likely choice).

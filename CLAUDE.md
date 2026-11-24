@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-org-palm is an Android front end for any org file in the folders the user picks, every heading an editable entry. The user syncs those folders w/ git in Termux, so the app writes no `:ID:` & keeps no rebase: each save re-reads the file, finds the heading by its anchor, & writes at once. `DESIGN.md` is the spec; read sections 3 & 4 ere changing the parser or the writer.
+org-palm is an Android front end for any org file in the folders the user picks, every heading an editable entry. The user syncs those folders w/ git in Termux, so the app writes no `:ID:` & keeps no rebase: each save re-reads the file, finds the heading by its anchor, & writes at once. `DESIGN.md` is the spec; read sections 3 & 4 ere changing the parser or the writer. `PLAN.md` holds the remaining phases, the ground rules, & the known limits of org-core; read it ere starting a phase.
 
 ## Stack
 
