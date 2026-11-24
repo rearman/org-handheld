@@ -1,6 +1,6 @@
-# org-palm: the plan from phase 2 on
+# org-palm: the plan from phase 3 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 & 1b are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor. CI (`gradle :org-core:test`) is green on `9e92e256` (2026-11-24), the end of 1b.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, & 2 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders & shows the Agenda, read-only. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `0f47cb46` (2026-11-24), the end of phase 2.
 
 ## Ground rules for every phase
 
@@ -11,16 +11,6 @@
 * **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
-
-## Phase 2: folders, the walk, & the Agenda (read-only)
-
-1. **The `:app` module.** Add the Android Gradle plugin & the Kotlin Compose plugin to the root `build.gradle.kts` (`apply false`), include `:app` in `settings.gradle.kts`, & make `:app` depend on `:org-core`. Kotlin, Jetpack Compose, Material 3, minSdk 26, JDK 17. Update the comments in both Gradle files that say ":app joins in phase 2".
-2. **CI.** Add a step `gradle :app:assembleDebug` to `.github/workflows/build.yml` (the Ubuntu runner carries an Android SDK), & keep `:org-core:test`.
-3. **Settings store.** Persist `OrgSettings` (Jetpack DataStore), seeded w/ `OrgSettings.STARTING`. The settings page itself may wait for phase 4, but the stored values feed every parse from this phase on.
-4. **Folder list.** Pick folders w/ `ACTION_OPEN_DOCUMENT_TREE`; keep each tree URI w/ `takePersistableUriPermission` (read & write). Termux's home appears in the picker through its DocumentsProvider. A folder reads flat by default, as `org-agenda-files` reads `~/org`; a switch per folder adds subfolders, recursively. Skip dot-files & dot-folders.
-5. **The walk & the cache.** On start & on each return to the front, walk the folders (`DocumentsContract` child queries), & re-read each `.org` file whose size or last-modified time changed; drop files that are gone. Keep one `OrgFile` per document URI. Read as UTF-8; `OrgFile` keeps the BOM & line endings.
-6. **The Agenda zoom level.** A day-by-day list from `Entry.agendaDates(from, to)` & the todo list from `Entry.inTodoList` (every open TODO, dated or not; COMMENT & `:ARCHIVE:` subtrees skipped). Show time, title, state, priority, tags (own & inherited), & category. A tap does naught yet.
-7. **Tests.** Unit tests for the walk's filter (dot-files, flat vs. recursive) & the change check (size & time); no UI tests.
 
 ## Phase 3: Day, Week, & Month
 
