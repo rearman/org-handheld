@@ -186,11 +186,7 @@ A move to another heading goes as `org-refile` does: the entry's subtree goes to
 3. **Read, edit, write.** Each save re-reads the file, finds the heading by its anchor, applies the edit, & writes at once. The anchor is the heading line & the section text as the app last read them, w/ the heading's line number. The heading at the same line number w/ the same text is the target; failing that, the one heading anywhere in the file w/ the same heading line & section text, provided the heading had no twin when the app read the file. A heading changed or deleted meanwhile, or moved when it has a twin, refuses the save w/ a conflict; the form keeps the edit for a retry after the app re-reads the file.
 4. **Read-only fallback.** A planning field whose timestamp the app cannot read (section 3) shows in its views w/ a lock marker, & the form shows it read-only w/ a note to edit it in Emacs.
 5. **No reformatting.** The app never re-indents, reorders properties, or rewrites a timestamp whose value is unchanged. It re-aligns the tags of a heading line that it rewrites, as Org does under `org-tags-column` (section 3, Emacs settings), & of no other line. A new property drawer goes right after the planning line, as Org puts it.
-6. **Escaping.** Text from a form must never parse as structure that Org would read & the user did not mean. The writer uses Org's documented escape, a zero-width space (U+200B), which Emacs shows as naught, & only where Org's parser would otherwise read structure. The parser undoes nothing: the text reads back as Org reads it.
-	* A title that ends in `:word:` gets a zero-width space after the last colon, so Org reads no tags.
-	* A title that begins w/ a TODO keyword of the file, `COMMENT`, or a priority cookie (`[#A]`) gets a leading zero-width space.
-	* A body line gets a leading zero-width space when it would read as a heading (one or more `*` & a space at column 0), as a keyword line (`#+` & a word & a colon, which would change the file's settings), as a drawer (a `:NAME:` line w/ an `:END:` line after it in the body), or, as the first line of the body of an entry w/o a planning line or drawer, as a planning line (`DEADLINE:`, `SCHEDULED:`, `CLOSED:`). No other line is escaped.
-7. **Writes in one stream.** The app opens the document w/ mode `"wt"` so the provider truncates the old bytes, & writes the whole file in one stream.
+6. **Writes in one stream.** The app opens the document w/ mode `"wt"` so the provider truncates the old bytes, & writes the whole file in one stream.
 
 ## 5. Sync behavior
 

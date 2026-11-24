@@ -196,6 +196,17 @@ class OrgWriterTest {
 		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 07:00-08:00 +1w>"), setOf(MONDAY, THURSDAY))),
 	)
 
+	// An event's body goes after its stamp lines, which stay as they were.
+	@Test
+	fun eventBodyFollowsItsStampLines() {
+		val text = Fixtures.text("calendar.org")
+		val body = "Call the rep\n<2026-11-30 Mon> then this"
+		val out = written(writer.apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.PM), listOf(FieldChange.Body(body)))))!!
+		val pm = Fixtures.entry(out, Fixtures.PM)
+		assertEquals(body, pm.event?.body)
+		assertEquals(listOf(Fixtures.ts("<2026-11-23 Mon 09:00-10:00>")), pm.event?.timestamps)
+	}
+
 	@Test
 	fun unchangedEventValuesLeaveTheTextAlone() {
 		val text = Fixtures.text("calendar.org")

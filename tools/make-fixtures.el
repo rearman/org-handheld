@@ -248,21 +248,6 @@ written ere the file is saved."
 (mf-case "tags-clear" "todo.org"
 	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-set-tags nil)))
 
-;;; Escapes: Org must read no tags and no keyword from an escaped title.
-
-(mf-case "escape-title" "todo.org"
-	(lambda ()
-		(mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04")
-		(org-edit-headline (concat "Check the list :hot:" (string #x200b)))
-		(unless (null (org-get-tags nil t)) (error "Escaped title reads as tags"))))
-(mf-case "escape-keyword" "todo.org"
-	(lambda ()
-		(mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04")
-		(org-priority 'remove)
-		(org-todo 'none)
-		(org-edit-headline (concat (string #x200b) "TODO list review"))
-		(unless (null (org-get-todo-state)) (error "Escaped title reads as a keyword"))))
-
 ;;; Properties, the body, and event timestamps.
 
 (mf-case "warn-set" "calendar.org"

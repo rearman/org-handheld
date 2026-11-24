@@ -354,7 +354,7 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 
 		// org-edit-headline: replace the title, realign the tags, and drop trailing blanks.
 		private fun setTitle(hi: Int, raw: String) {
-			val new = Escape.title(raw, keywords.all)
+			val new = FormText.oneLine(raw)
 			val m = headline(hi)
 			val g = m.groups[4]
 			if (g?.value == new || (g == null && new.isEmpty())) return
@@ -748,7 +748,7 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 		private fun setProperty(hi: Int, key: String, value: String?) {
 			var s = section(hi)
 			val cur = s.property(lines, key)
-			val clean = value?.let { Escape.oneLine(it) }
+			val clean = value?.let { FormText.oneLine(it) }
 			if (cur?.value == clean) return
 			if (clean == null) {
 				val doomed = s.properties(lines).filter { it.key.equals(key, true) || it.key.equals("$key+", true) }
@@ -796,14 +796,11 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 
 		// The body up to the last non-blank line of the section; trailing blank lines stay. In an event
 		// (after any Timestamps change of the same edit, rank 7) the text replaces the body after the
-		// leading stamp lines. Each line that Org would read as structure takes the escape of
-		// Escape.bodyLines; a planning-like first line counts only when the text begins right after the
-		// heading line.
+		// leading stamp lines. The text goes in as typed.
 		private fun setBody(hi: Int, text: String) {
 			val s = section(hi)
 			val from = if (s.isEvent(lines)) s.stampEnd else s.bodyStart
-			val planningFirst = s.planningLine == null && s.bodyStart == s.start + 1 && from == s.bodyStart
-			val new = Escape.bodyLines(text, planningFirst)
+			val new = FormText.lines(text)
 			if ((from until s.bodyEnd).map { lines[it].text } == new) return
 			replace(from, s.bodyEnd, new)
 		}

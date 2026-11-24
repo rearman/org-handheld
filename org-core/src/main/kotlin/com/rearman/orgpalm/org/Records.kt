@@ -208,8 +208,7 @@ data class Priorities(val highest: Int, val lowest: Int, val default: Int) {
 	}
 }
 
-// A heading line split as org-complex-heading-regexp splits it. [title] is as written, any zero-width
-// space of an escape kept, as Org reads it.
+// A heading line split as org-complex-heading-regexp splits it. [title] is as written, as Org reads it.
 data class Headline(
 	val level: Int,
 	val keyword: String?,

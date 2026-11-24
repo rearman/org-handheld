@@ -21,7 +21,7 @@ object Fixtures {
 		"startup-drawer", "user-blocked", "user-blocked-box", "crlf-done", "user-reschedule", "deadline-set",
 		"schedule-add", "schedule-beside-deadline", "user-unschedule", "user-undeadline", "user-state-and-date",
 		"title-edit", "user-priority-set", "user-priority-default", "priority-remove", "tags-set", "tags-clear",
-		"escape-title", "escape-keyword", "warn-set", "warn-remove", "foreign-warn", "drawer-remove",
+		"warn-set", "warn-remove", "foreign-warn", "drawer-remove",
 		"logbook-body", "weekdays-add", "weekdays-remove", "repeater-change", "user-repeat", "repeat-plus",
 		"repeat-dot", "repeat-plusplus", "repeat-month-end", "repeat-plain-scheduled", "repeat-warning",
 		"repeat-delay", "repeat-to-unknown-state", "repeat-zero-first", "repeat-body-stamp", "repeat-no-keyword",
