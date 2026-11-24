@@ -1,6 +1,6 @@
-# org-palm: the plan from phase 4 on
+# org-palm: the plan from phase 5 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, 2, & 3 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders & shows the Agenda, Day, Week, & Month, read-only. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `d489728b` (2026-11-24), the end of phase 3.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, 2, 3, & 4 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `17323d0d` (2026-11-24), the end of phase 4.
 
 ## Ground rules for every phase
 
@@ -11,19 +11,6 @@
 * **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
-
-## Phase 4: the bottom sheet, capture, & edit
-
-1. **The sheet**: one form for capture & edit (`DESIGN.md` section 2). Fields: title, state, priority, scheduled, deadline, tags as chips, body, & the file & heading that hold it. An entry whose leading stamp lines match the event shapes adds date, time span, repeat, weekday set, & alarm (`Entry.event`); its body field shows `Event.body`.
-2. **Save**: read the file fresh, apply the `Edit` w/ `OrgWriter(clock, settings)`, & write the whole file at once (`openOutputStream(uri, "wt")`). Results:
-	* `Written`: replace the cached `OrgFile`.
-	* `Conflict`: keep the form open w/ the edit, re-read, & offer a retry.
-	* `Locked`: the field was locked at read; refresh the form.
-	* `Blocked(reason)`: show the reason (an open child or an unchecked box, per the enforced dependencies).
-3. **Notes**: a state whose keyword asks for a note (`@`) opens a note field; an empty note logs the line alone.
-4. **Capture**: the default target starts at `inbox.org` at the top level, placed per the capture position (first, from `:prepend t`). A simple file & heading list serves as the picker until phase 7. A missing file or heading sends the user to the picker; the app creates a file only on request (`createDocument`).
-5. **Refile**: within a file one `Edit.Refile`; across files `OrgWriter.subtree`, then `refileIn` written to the target, then `refileOut` written to the source. A `Conflict` from `refileOut` leaves the copy in the target & tells the user.
-6. **The settings page**: every row of the Emacs settings table, plus the capture target & each folder's subfolder switch.
 
 ## Phase 5: saved agenda filters
 
