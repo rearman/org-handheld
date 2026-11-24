@@ -51,7 +51,7 @@ Alarms from `:APPT_WARNTIME:` (minutes ere the start of a timed event), as `org-
 
 ## Phase 7: the outline browser
 
-Any file's headings as a collapsible tree; a tap opens the sheet. The same tree serves as the file & heading picker for capture & refile, replacing the phase 4 list. An entry w/ a diary sexp the app cannot read (`Entry.unknownSexp`) carries a marker here.
+Any file's headings as a collapsible tree; a tap opens the sheet. The same tree serves as the file & heading picker for capture & refile, replacing the phase 4 list.
 
 ## Known limits of org-core
 

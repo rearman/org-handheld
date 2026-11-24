@@ -244,17 +244,15 @@ class RecordsTest {
 		for (row in rows) {
 			val (text, dates) = row.split('\t')
 			val e = parse("* E\n" + text.replace("\\n", "\n") + "\n").entries.single()
-			assertFalse(row, e.unknownSexp)
 			assertEquals(row, dates, e.agendaDates(from, from.plusDays(899)).joinToString(" "))
 		}
 	}
 
-	// A sexp the app does not model shows on no date and marks its entry; a COMMENT or :ARCHIVE:
+	// A sexp the app does not model shows on no date, as a bad sexp in Org; a COMMENT or :ARCHIVE:
 	// subtree shows nowhere in the agenda.
 	@Test
 	fun unknownSexpsAndSkippedTrees() {
 		val unknown = parse("* E\n<%%(org-class 2026 11 1 2026 12 1 2)>\n").entries.single()
-		assertTrue(unknown.unknownSexp)
 		assertTrue(unknown.agendaDates(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 31)).isEmpty())
 		val text = "* COMMENT Old\n** TODO Gone\n<2026-11-24 Tue>\n* Shelf :ARCHIVE:\n** TODO Kept\n* TODO Live\n<2026-11-24 Tue>\n"
 		val entries = parse(text).entries

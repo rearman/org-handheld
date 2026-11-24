@@ -25,8 +25,9 @@ data class Event(
 // holds it. [event] is set when the leading stamp lines of the body make an event.
 //
 // For the agenda: [activeStamps] are the plain active timestamps of the title and the body, [ranges]
-// the date ranges there, and [sexps] the diary sexps that the app models; [unknownSexp] marks an entry
-// that holds a sexp it does not. [inAgenda] is false under a COMMENT heading or one tagged :ARCHIVE:.
+// the date ranges there, and [sexps] the diary sexps that the app models; any other sexp gives no
+// date, as a sexp that Org cannot evaluate gives none. [inAgenda] is false under a COMMENT heading or
+// one tagged :ARCHIVE:.
 //
 // A planning keyword whose stamp does not parse locks its field (DESIGN.md section 4 rule 4).
 data class Entry(
@@ -51,7 +52,6 @@ data class Entry(
 	val activeStamps: List<Timestamp>,
 	val ranges: List<ClosedRange<LocalDate>>,
 	val sexps: List<DiarySexp>,
-	val unknownSexp: Boolean,
 	val inAgenda: Boolean,
 	val scheduledLocked: Boolean,
 	val deadlineLocked: Boolean,
@@ -396,7 +396,6 @@ class OrgFile(val path: String, val document: OrgDocument, settings: OrgSettings
 			activeStamps = dates.stamps,
 			ranges = dates.ranges,
 			sexps = dates.sexps,
-			unknownSexp = dates.unknownSexp,
 			inAgenda = (up + h).none { skipped(it) },
 			scheduledLocked = planning.scheduledLocked,
 			deadlineLocked = planning.deadlineLocked,
@@ -494,7 +493,6 @@ internal class AgendaText(
 	val stamps: List<Timestamp>,
 	val ranges: List<ClosedRange<LocalDate>>,
 	val sexps: List<DiarySexp>,
-	val unknownSexp: Boolean,
 ) {
 	companion object {
 		private val RANGE = Regex("""(<\d{4}-\d{2}-\d{2}[^<>\n]*>)--(<\d{4}-\d{2}-\d{2}[^<>\n]*>)""")
@@ -534,7 +532,6 @@ internal class AgendaText(
 			val stamps = ArrayList<Timestamp>()
 			val ranges = ArrayList<ClosedRange<LocalDate>>()
 			val sexps = ArrayList<DiarySexp>()
-			var unknown = false
 			for (text in texts) {
 				var rest = text
 				for (m in RANGE.findAll(text)) {
@@ -544,13 +541,12 @@ internal class AgendaText(
 				}
 				rest = rest.replace(RANGE, " ")
 				for (m in DiarySexp.STAMP.findAll(rest)) {
-					val sexp = DiarySexp.parse(m.groupValues[1])
-					if (sexp == null) unknown = true else sexps.add(sexp)
+					DiarySexp.parse(m.groupValues[1])?.let { sexps.add(it) }
 				}
 				rest = rest.replace(DiarySexp.STAMP, " ")
 				for (m in Timestamp.ACTIVE.findAll(rest)) Timestamp.parse(m.value)?.takeIf { it.active }?.let { stamps.add(it) }
 			}
-			return AgendaText(stamps, ranges, sexps, unknown)
+			return AgendaText(stamps, ranges, sexps)
 		}
 	}
 }
