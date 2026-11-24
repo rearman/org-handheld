@@ -1,6 +1,6 @@
-# org-palm: the plan from phase 7 on
+# org-palm: the plan, all phases done
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 to 6 (w/ 1b) are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page, the saved agenda filters, & alarms from `:APPT_WARNTIME:`. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `13a0b496` (2026-11-24), the end of phase 6.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 to 7 (w/ 1b) are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page, the saved agenda filters, alarms from `:APPT_WARNTIME:`, & the outline browser. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `fef51afe` (2026-11-24), the end of phase 7. The ground rules & the known limits below still govern any later work.
 
 ## Ground rules for every phase
 
@@ -11,10 +11,6 @@
 * **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
-
-## Phase 7: the outline browser
-
-Any file's headings as a collapsible tree; a tap opens the sheet. The same tree serves as the file & heading picker for capture & refile, replacing the phase 4 list.
 
 ## Known limits of org-core
 
