@@ -36,7 +36,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -79,6 +78,8 @@ private fun App(model: AppModel = viewModel()) {
 	val files by model.files.collectAsStateWithLifecycle()
 	val error by model.error.collectAsStateWithLifecycle()
 	var showFolders by rememberSaveable { mutableStateOf(false) }
+	var level by rememberSaveable { mutableStateOf(Level.AGENDA) }
+	var focus by rememberSaveable { mutableStateOf(LocalDate.now()) }
 	val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { model.addFolder(it) } }
 
 	// On start & on each return to the front.
@@ -87,9 +88,9 @@ private fun App(model: AppModel = viewModel()) {
 	Scaffold(
 		topBar = {
 			TopAppBar(
-				title = { Text(if (showFolders) "Folders" else "Agenda") },
+				title = { Text(if (showFolders) "Folders" else "org-palm") },
 				actions = {
-					TextButton(onClick = { showFolders = !showFolders }) { Text(if (showFolders) "Agenda" else "Folders") }
+					TextButton(onClick = { showFolders = !showFolders }) { Text(if (showFolders) "Done" else "Folders") }
 				},
 			)
 		},
@@ -98,11 +99,7 @@ private fun App(model: AppModel = viewModel()) {
 			error?.let { Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
 			when {
 				showFolders || folders.isEmpty() -> FolderList(folders, { pick.launch(null) }, model::setRecursive)
-				else -> {
-					val today = LocalDate.now()
-					val agenda = remember(files, today) { Agenda.of(files, today) }
-					AgendaList(agenda)
-				}
+				else -> Timeline(files, level, { level = it }, focus, { focus = it })
 			}
 		}
 	}
@@ -130,7 +127,7 @@ private val DATE = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 private val TIME = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
-private fun AgendaList(agenda: Agenda) {
+fun AgendaList(agenda: Agenda) {
 	LazyColumn(Modifier.fillMaxSize()) {
 		for (day in agenda.days) {
 			item(key = day.date.toString()) {
