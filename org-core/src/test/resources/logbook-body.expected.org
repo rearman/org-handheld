@@ -1,0 +1,18 @@
+#+TODO: TODO WAITING | DONE
+
+* Work
+:PROPERTIES:
+:ID:       1c7e4a9d-2f60-4b38-8e15-a9d3c0b7f246
+:CATEGORY: Work
+:END:
+** TODO Calibrate suction transmitter
+SCHEDULED: <2026-11-24 Tue>
+:PROPERTIES:
+:ID:       6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58
+:END:
+:LOGBOOK:
+- State "TODO"       from "WAITING"    [2026-11-20 Fri 08:12]
+CLOCK: [2026-11-21 Sat 09:00]--[2026-11-21 Sat 09:40] =>  0:40
+:END:
+Use the Fluke 754.
+Zero at 0 psig.

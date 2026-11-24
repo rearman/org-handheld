@@ -1,0 +1,21 @@
+* Work
+:PROPERTIES:
+:ID:       71c3e9a5-0d26-4b84-9f17-2a6e8c4b0d39
+:CATEGORY: Work
+:END:
+** Pump notes
+:PROPERTIES:
+:ID:       82d4fab6-1e37-4c95-80a8-3b7f9d5c1e4a
+:END:
+Seal kit on order.
+
+** Forklift
+:PROPERTIES:
+:ID:       a4f61cd8-3059-4eb7-a2ca-5d91bf7e306c
+:END:
+Charger fault.
+* Shop
+:PROPERTIES:
+:ID:       93e50bc7-2f48-4da6-91b9-4c80ae6d2f5b
+:CATEGORY: Shop
+:END:

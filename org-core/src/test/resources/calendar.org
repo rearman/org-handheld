@@ -1,0 +1,20 @@
+* Compressor PM, Plant 2
+:PROPERTIES:
+:ID:       6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10
+:APPT_WARNTIME: 15
+:END:
+<2026-11-23 Mon 09:00-10:00>
+Bring the oil analysis kit.
+
+* Office closed                                                     :private:
+:PROPERTIES:
+:ID:       0b7e3a52-41d9-4f0e-a3c6-7d1e9b2f4c88
+:END:
+<2026-11-26 Thu>
+
+* Plant 2 walkdown
+:PROPERTIES:
+:ID:       9a4c0e1f-3b27-4d8e-b5a1-6c2f8e7d0b43
+:END:
+<2026-11-23 Mon 07:00-08:00 +2w>
+<2026-11-26 Thu 07:00-08:00 +2w>

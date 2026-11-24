@@ -1,0 +1,12 @@
+* Vendor visit                                                         :work:
+:PROPERTIES:
+:ID:       e4b7a1c9-0d52-4e8f-b3a6-7c1d9f2e0a85
+:LOCATION: Plant 2 lobby
+:APPT_WARNTIME: 20
+:CUSTOM_ID: vendor-visit
+:END:
+:NOTES:
+Badge at the front desk.
+:END:
+<2026-12-02 Wed 13:30-15:00>
+Meet the Frick rep.

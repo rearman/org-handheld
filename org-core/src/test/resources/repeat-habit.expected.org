@@ -1,0 +1,35 @@
+#+TODO: TODO NEXT | DONE
+#+TYP_TODO: ANNA BOB | FINISHED
+
+* Work
+:PROPERTIES:
+:ID:       17a3c5e9-0b2d-4f46-8a1c-3e5b7d9f1a2c
+:CATEGORY: Work
+:END:
+** Weekly sweep
+SCHEDULED: <2026-11-16 Mon +1w>
+:PROPERTIES:
+:ID:       28b4d6fa-1c3e-4057-9b2d-4f6c8e0a2b3d
+:END:
+
+** TODO Habit stretch
+SCHEDULED: <2026-11-24 Tue .+1d/3d>
+:PROPERTIES:
+:ID:       39c5e70b-2d4f-4168-8c3e-5a7d9f1b3c4e
+:LAST_REPEAT: [2026-11-23 Mon 14:30]
+:END:
+
+- State "DONE"       from "TODO"       [2026-11-23 Mon 14:30]
+Stretch before the shift.
+** NEXT Pump rounds
+SCHEDULED: <2026-11-16 Mon +1w>
+:PROPERTIES:
+:ID:       4ad6f81c-3e50-4279-9d4f-6b8e0a2c4d5f
+:REPEAT_TO_STATE: NEXT
+:END:
+** ANNA Call Anna
+DEADLINE: <2026-11-20 Fri +1w>
+:PROPERTIES:
+:ID:       5be70a2d-4f61-438a-8e50-7c9f1b3d5e6a
+:END:
+

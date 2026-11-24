@@ -1,0 +1,60 @@
+#+TODO: TODO NEXT | DONE
+
+* Work
+:PROPERTIES:
+:ID:       6d2a9f0c-4b81-4e37-a5c2-0e9b7d3f1a64
+:CATEGORY: Work
+:END:
+** TODO Weekly oil check
+SCHEDULED: <2026-11-16 Mon +1w>
+:PROPERTIES:
+:ID:       a1c4e7f0-2b5d-4893-b6e9-c2f5a8d1b4e7
+:END:
+Check the sight glass.
+** NEXT Monthly filter change
+DEADLINE: <2026-10-31 Sat .+1m>
+:PROPERTIES:
+:ID:       b2d5f8a1-3c6e-4904-87fa-d3a6b9e2c5f8
+:END:
+** TODO Month-end report
+DEADLINE: <2026-08-31 Mon ++1m> SCHEDULED: <2026-08-28 Fri ++1m>
+:PROPERTIES:
+:ID:       c3e6a9b2-4d7f-4a15-98ab-e4b7c0f3d6a9
+:END:
+** TODO Quarterly valve test
+SCHEDULED: <2026-01-31 Sat +1m>
+:PROPERTIES:
+:ID:       d4f7b0c3-5e80-4b26-a9bc-f5c8d1a4e7b0
+:END:
+** TODO Daily log review
+DEADLINE: <2026-11-20 Fri +1d> SCHEDULED: <2026-11-18 Wed>
+:PROPERTIES:
+:ID:       e5a8c1d4-6f91-4c37-bacd-a6d9e2b5f8c1
+:END:
+** TODO Delayed inspection
+SCHEDULED: <2026-11-16 Mon +1w --2d>
+:PROPERTIES:
+:ID:       07c1e4a8-9b2f-4d63-a5e8-1c4f7b0d3e96
+:END:
+** NEXT Gauge check
+SCHEDULED: <2026-11-16 Mon +1w>
+:PROPERTIES:
+:ID:       18d2f5b9-0c3a-4e74-b6f9-2d5a8c1e4fa7
+:REPEAT_TO_STATE: WAITING
+:END:
+** TODO Zero first
+DEADLINE: <2026-11-20 Fri +0d> SCHEDULED: <2026-11-18 Wed +1w>
+:PROPERTIES:
+:ID:       29e3a6c0-1d4b-4f85-a7b0-3e6b9d2f5ab8
+:END:
+** TODO Site visit
+SCHEDULED: <2026-11-16 Mon +1w>
+:PROPERTIES:
+:ID:       3af4b7d1-2e5c-4096-b8c1-4f7cae3a6bc9
+:END:
+Next walkthrough <2026-11-19 Thu +2w> w/ the owner.
+** TODO Ammonia sensor test
+SCHEDULED: <2026-12-31 Thu ++1m -2d>
+:PROPERTIES:
+:ID:       f6b9d2e5-7a02-4d48-8bde-b7eaf3c6a9d2
+:END:

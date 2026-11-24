@@ -1,0 +1,24 @@
+#+TODO: TODO | DONE
+
+* Work
+:PROPERTIES:
+:ID:       8e3b0d6f-5a19-4c72-9f4e-2b6d1a0c8e37
+:CATEGORY: Work
+:END:
+** TODO Rebuild compressor 3
+SCHEDULED: <2026-12-02 Wed> DEADLINE: <2026-12-04 Fri>
+:PROPERTIES:
+:ID:       0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60
+:END:
+Parts list below.
+*** Order gaskets
+:PROPERTIES:
+:ID:       5b8c2e7f-9a14-4d63-b0e7-6f3a1c9d2e85
+:END:
+*** DONE Drain oil
+CLOSED: [2026-11-19 Thu 10:05]
+** TODO Check slide valve
+SCHEDULED: <2026-11-30 Mon>
+:PROPERTIES:
+:ID:       3a9e6c1f-0b47-4d25-8e93-7f2c5a1d0b84
+:END:

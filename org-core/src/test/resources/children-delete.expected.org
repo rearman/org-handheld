@@ -1,0 +1,12 @@
+#+TODO: TODO | DONE
+
+* Work
+:PROPERTIES:
+:ID:       8e3b0d6f-5a19-4c72-9f4e-2b6d1a0c8e37
+:CATEGORY: Work
+:END:
+** TODO Check slide valve
+SCHEDULED: <2026-11-30 Mon>
+:PROPERTIES:
+:ID:       3a9e6c1f-0b47-4d25-8e93-7f2c5a1d0b84
+:END:

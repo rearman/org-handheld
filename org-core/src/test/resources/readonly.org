@@ -1,0 +1,18 @@
+* Third Wednesday safety meeting
+:PROPERTIES:
+:ID:       2d8f5b1e-9a04-4c63-b7e9-0e4a6c2d8f15
+:END:
+<%%(diary-float t 3 3)>
+
+* Shutdown week
+:PROPERTIES:
+:ID:       7b3e0a6d-1c95-4f28-8d4b-6f2a9e1c7d03
+:END:
+<2026-12-21 Mon>--<2026-12-23 Wed>
+
+* Mixed times
+:PROPERTIES:
+:ID:       f0a6c3e9-8b17-4d52-a9e4-3d7b1f0c6e28
+:END:
+<2026-11-23 Mon 07:00 +1w>
+<2026-11-25 Wed 08:00 +1w>

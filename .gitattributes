@@ -1,0 +1,2 @@
+# The fixtures keep their exact bytes: CRLF, mixed line endings, a BOM, and no final newline.
+org-core/src/test/resources/** -text

@@ -1,0 +1,30 @@
+#+TODO: TODO NEXT WAITING | DONE CANCELED
+
+* Work
+:PROPERTIES:
+:ID:       c3e8b1a0-5d47-4f2a-9e6b-1a7c0d3f8e52
+:CATEGORY: Work
+:END:
+** DONE [#C] Update I/O list
+CLOSED: [2026-11-20 Fri 16:42]
+:PROPERTIES:
+:ID:       7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04
+:END:
+
+* Unfiled
+:PROPERTIES:
+:ID:       e1f6c9b3-2a85-4d07-8b4c-0d3e7a5f1b96
+:CATEGORY: Unfiled
+:END:
+
+* Shop
+:PROPERTIES:
+:ID:       11111111-2222-4333-8444-555555555555
+:CATEGORY: Shop
+:END:
+** TODO [#A] Order VFD spares                                       :private:
+DEADLINE: <2026-11-25 Wed> SCHEDULED: <2026-11-23 Mon>
+:PROPERTIES:
+:ID:       5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37
+:END:
+Two ACS580s, frame R3.

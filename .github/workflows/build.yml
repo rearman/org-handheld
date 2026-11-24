@@ -1,0 +1,39 @@
+name: Build
+
+# Runs the tests of :org-core, the Org parser and writer. The fixtures that the tests compare against
+# come from tools/make-fixtures.el, which runs on a desktop w/ Emacs, not here.
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+
+      - name: Test org-core
+        run: gradle :org-core:test --stacktrace
+
+      # The HTML and XML reports show which fixture a failing test compared.
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: org-core-test-reports
+          path: |
+            org-core/build/reports/tests
+            org-core/build/test-results
+          if-no-files-found: ignore
