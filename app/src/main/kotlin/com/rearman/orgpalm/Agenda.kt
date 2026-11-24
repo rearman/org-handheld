@@ -93,7 +93,7 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 
 		// The value of the entry's cookie as org-priority-to-value reads it (a number, else a letter's
 		// code), or the file's default priority for none.
-		private fun priority(e: Entry, file: OrgFile): Int =
+		fun priority(e: Entry, file: OrgFile): Int =
 			e.priority?.let { it.toIntOrNull() ?: it[0].code } ?: file.priorities.default
 	}
 }

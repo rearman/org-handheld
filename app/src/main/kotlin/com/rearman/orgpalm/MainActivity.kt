@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -43,6 +45,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rearman.orgpalm.org.OrgFile
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -79,6 +82,7 @@ private fun App(model: AppModel = viewModel()) {
 	var focus by rememberSaveable { mutableStateOf(LocalDate.now()) }
 	var editing by remember { mutableStateOf<Place?>(null) }
 	var capturing by remember { mutableStateOf(false) }
+	var filter by rememberSaveable { mutableStateOf<String?>(null) }
 	val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { model.addFolder(it) } }
 
 	// On start & on each return to the front.
@@ -90,6 +94,7 @@ private fun App(model: AppModel = viewModel()) {
 			TopAppBar(
 				title = { Text(if (settingsShown) "Settings" else "org-palm") },
 				actions = {
+					if (!settingsShown) ViewsMenu(filter) { filter = it }
 					TextButton(onClick = { showSettings = !showSettings }) { Text(if (showSettings) "Done" else "Settings") }
 				},
 			)
@@ -103,7 +108,9 @@ private fun App(model: AppModel = viewModel()) {
 			if (settingsShown) {
 				SettingsScreen(model, folders) { pick.launch(null) }
 			} else {
-				Timeline(files, level, { level = it }, focus, { focus = it }) { row -> editing = Place(row.file, row.entry) }
+				val open = { row: AgendaRow -> editing = Place(row.file, row.entry) }
+				val saved = Filters.STARTING.firstOrNull { it.name == filter }
+				if (saved != null) FilterView(files, saved, open) else Timeline(files, level, { level = it }, focus, { focus = it }, open)
 			}
 		}
 	}
@@ -163,5 +170,40 @@ private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit) {
 				Text(e.inheritedTags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium, color = muted)
 			}
 		}
+	}
+}
+
+// A saved filter's blocks, each under its header; a byTag block heads each tag's rows w/ the tag.
+@Composable
+fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) -> Unit) {
+	val today = LocalDate.now()
+	val blocks = remember(files, filter, today) { filter.blocks.map { Filters.rows(it, files, today) } }
+	LazyColumn(Modifier.fillMaxSize()) {
+		blocks.forEachIndexed { i, b ->
+			item(key = "block$i") { Header(b.block.header) }
+			var last: String? = null
+			for ((n, pair) in b.rows.withIndex()) {
+				val (group, row) = pair
+				if (b.block.byTag && (n == 0 || group != last)) {
+					val label = group ?: "(no tag)"
+					item(key = "block$i-group$n") {
+						Text(label, Modifier.padding(start = 16.dp, top = 8.dp), style = MaterialTheme.typography.labelLarge)
+					}
+				}
+				last = group
+				item(key = "block$i-row$n") { AgendaLine(row, onOpen) }
+			}
+		}
+	}
+}
+
+// The overflow menu: the timeline, or a saved filter by name.
+@Composable
+private fun ViewsMenu(current: String?, onPick: (String?) -> Unit) {
+	var open by remember { mutableStateOf(false) }
+	TextButton(onClick = { open = true }) { Text(current ?: "Timeline") }
+	DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+		DropdownMenuItem(text = { Text("Timeline") }, onClick = { onPick(null); open = false })
+		for (f in Filters.STARTING) DropdownMenuItem(text = { Text(f.name) }, onClick = { onPick(f.name); open = false })
 	}
 }
