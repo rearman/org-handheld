@@ -80,7 +80,8 @@ class OrgWriter(
 		return if (result is WriteResult.Written) result.copy(text = addMissingIds(result.text, kind)) else result
 	}
 
-	private fun applyOnly(file: OrgFile, edit: Edit): WriteResult = when (edit) {
+	// A block body: the branches return early, which Kotlin forbids in an expression body.
+	private fun applyOnly(file: OrgFile, edit: Edit): WriteResult { return when (edit) {
 		is Edit.Update -> {
 			val h = file.find(edit.id) ?: return WriteResult.RecordDeleted(edit.id)
 			if (file.isReadOnly(h)) return WriteResult.ReadOnly(edit.id)
@@ -113,7 +114,7 @@ class OrgWriter(
 			buf.paste(parent.subtreeEnd, span, parent.level + 1 - h.level)
 			WriteResult.Written(buf.render(), edit.id)
 		}
-	}
+	} }
 
 	// A new heading at the end of [parent] (the file w/o one), w/ a new :ID: and [changes].
 	private fun append(file: OrgFile, parent: Heading?, changes: List<FieldChange>): WriteResult.Written {
