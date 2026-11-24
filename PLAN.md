@@ -1,6 +1,6 @@
-# org-palm: the plan from phase 5 on
+# org-palm: the plan from phase 6 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, 2, 3, & 4 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `17323d0d` (2026-11-24), the end of phase 4.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, 2, 3, 4, & 5 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page & the saved agenda filters. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `921acdec` (2026-11-24), the end of phase 5.
 
 ## Ground rules for every phase
 
@@ -11,10 +11,6 @@
 * **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
-
-## Phase 5: saved agenda filters
-
-Named filters, each a set of TODO states, tags, categories, & a date span, like an entry in `org-agenda-custom-commands`; the overflow menu picks one. The starting set mirrors the two commands of `init.el`: "GTD Dashboard" (today's agenda, the `inbox` tag, NEXT, WAITING, & stuck projects per `org-stuck-projects`) & "Contexts" (NEXT entries grouped by tag, sorted as its `org-agenda-sorting-strategy` gives: tag up, priority down, effort up). Reread them in `init.el` ere building, as with the settings.
 
 ## Phase 6: alarms
 
