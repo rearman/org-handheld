@@ -389,18 +389,6 @@ class OrgWriterTest {
 		assertEquals(WriteResult.Conflict, writer.refileOut(changed, subtree))
 	}
 
-	@Test
-	fun fileWithConflictMarkersRefusesEveryEdit() {
-		val text = Fixtures.text("conflict.org")
-		val shared = Fixtures.headingAnchor(text, "* TODO Shared task")
-		assertEquals(WriteResult.ConflictMarkers, writer.apply(text, Edit.Update(shared, listOf(FieldChange.State("DONE")))))
-		assertEquals(WriteResult.ConflictMarkers, writer.apply(text, Edit.Insert(null, listOf(FieldChange.Title("New")))))
-		assertEquals(WriteResult.ConflictMarkers, writer.apply(text, Edit.Delete(shared)))
-		val subtree = writer.subtree(text, shared)!!
-		assertEquals(WriteResult.ConflictMarkers, writer.refileIn(text, null, subtree))
-		assertEquals(WriteResult.ConflictMarkers, writer.refileOut(text, subtree))
-	}
-
 	// A target heading changed since the read takes no copy, and the source keeps the entry.
 	@Test
 	fun refileIntoAChangedTargetIsAConflict() {

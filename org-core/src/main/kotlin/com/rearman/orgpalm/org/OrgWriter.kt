@@ -63,9 +63,6 @@ sealed interface WriteResult {
 	// read the file. The form keeps the edit for a retry after a re-read.
 	data object Conflict : WriteResult
 
-	// The file holds git conflict markers and is read-only whole (DESIGN.md section 4 rule 4).
-	data object ConflictMarkers : WriteResult
-
 	// The edit sets a planning field whose stamp the app cannot read (Entry's planning locks); the form
 	// shows such a field read-only, so this answers only an edit made against an older read.
 	data object Locked : WriteResult
@@ -87,15 +84,11 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 	// Apply [edit] to the text of a file as it stands now.
 	fun apply(text: String, edit: Edit): WriteResult = apply(parse(text), edit)
 
-	// A block body: the branches return early, which Kotlin forbids in an expression body.
-	fun apply(file: OrgFile, edit: Edit): WriteResult {
-		if (file.hasConflictMarkers) return WriteResult.ConflictMarkers
-		return when (edit) {
-			is Edit.Update -> update(file, edit)
-			is Edit.Insert -> insert(file, edit)
-			is Edit.Delete -> delete(file, edit)
-			is Edit.Refile -> refile(file, edit)
-		}
+	fun apply(file: OrgFile, edit: Edit): WriteResult = when (edit) {
+		is Edit.Update -> update(file, edit)
+		is Edit.Insert -> insert(file, edit)
+		is Edit.Delete -> delete(file, edit)
+		is Edit.Refile -> refile(file, edit)
 	}
 
 	private fun parse(text: String): OrgFile = OrgFile.parse("", text, settings)
@@ -172,8 +165,7 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 	// (DESIGN.md section 3): subtree() takes the subtree from the source text; refileIn() gives the new
 	// target text, which the app writes first; refileOut() then gives the new source text.
 
-	// The subtree at [anchor] of [sourceText], or null when the anchor finds no heading. The caller
-	// checks OrgFile.hasConflictMarkers first, as it does ere opening any form, so null means a conflict.
+	// The subtree at [anchor] of [sourceText], or null for a conflict: the anchor finds no heading.
 	fun subtree(sourceText: String, anchor: Anchor): Subtree? {
 		val file = parse(sourceText)
 		val h = locate(file, anchor) ?: return null
@@ -183,7 +175,7 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 	// [subtree] pasted into [targetText] under [target], its stars shifted to one level below it, per
 	// the refile position; at level 1 when [target] is null.
 	fun refileIn(targetText: String, target: Anchor?, subtree: Subtree): WriteResult {
-		val file = editable(targetText) ?: return WriteResult.ConflictMarkers
+		val file = parse(targetText)
 		val heading = target?.let { locate(file, it) ?: return WriteResult.Conflict }
 		return pasteSubtree(file, heading, subtree.lines, subtree.level)
 	}
@@ -191,15 +183,12 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 	// [subtree] removed from [sourceText] once it is found there unchanged; a Conflict otherwise, and the
 	// target keeps its copy.
 	fun refileOut(sourceText: String, subtree: Subtree): WriteResult {
-		val file = editable(sourceText) ?: return WriteResult.ConflictMarkers
+		val file = parse(sourceText)
 		val h = locate(file, subtree.anchor) ?: return WriteResult.Conflict
 		val now = file.document.lines.subList(h.start, h.subtreeEnd).map { it.text }
 		if (now != subtree.lines.map { it.text }) return WriteResult.Conflict
 		return delete(file, Edit.Delete(subtree.anchor))
 	}
-
-	// [text] parsed, or null when it holds git conflict markers and is read-only whole.
-	private fun editable(text: String): OrgFile? = parse(text).takeUnless { it.hasConflictMarkers }
 
 	// The lines of one file under edit, w/ the file's own settings.
 	private inner class Buffer(private val file: OrgFile) {

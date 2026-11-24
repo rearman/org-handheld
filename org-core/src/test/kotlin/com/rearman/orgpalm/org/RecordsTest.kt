@@ -270,11 +270,4 @@ class RecordsTest {
 		assertEquals(listOf(false, false, false, false, true), entries.map { it.inAgenda })
 		assertTrue(entries[1].agendaDates(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 12, 31)).isEmpty())
 	}
-
-	@Test
-	fun conflictMarkersMakeTheFileReadOnly() {
-		assertTrue(Fixtures.file("conflict.org").hasConflictMarkers)
-		assertFalse(Fixtures.file("outline.org").hasConflictMarkers)
-		assertFalse(OrgFile.parse("", "* Notes\n========\nA rule, not a marker.\n").hasConflictMarkers)
-	}
 }

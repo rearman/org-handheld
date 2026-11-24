@@ -10,7 +10,7 @@ object Fixtures {
 	val INPUTS = listOf(
 		"calendar.org", "todo.org", "memos.org", "crlf.org", "foreign.org", "logbook.org", "children.org",
 		"no-final-newline.org", "readonly.org", "bom.org", "mixed.org", "repeat.org", "empty.org", "move.org",
-		"repeat2.org", "outline.org", "conflict.org", "user.org", "startup.org",
+		"repeat2.org", "outline.org", "user.org", "startup.org",
 	)
 
 	// The cases whose <case>.expected.org Emacs writes.

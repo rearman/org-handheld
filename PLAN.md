@@ -18,9 +18,8 @@
 3. **Settings store.** Persist `OrgSettings` (Jetpack DataStore), seeded w/ `OrgSettings.STARTING`. The settings page itself may wait for phase 4, but the stored values feed every parse from this phase on.
 4. **Folder list.** Pick folders w/ `ACTION_OPEN_DOCUMENT_TREE`; keep each tree URI w/ `takePersistableUriPermission` (read & write). Termux's home appears in the picker through its DocumentsProvider. A folder reads flat by default, as `org-agenda-files` reads `~/org`; a switch per folder adds subfolders, recursively. Skip dot-files & dot-folders.
 5. **The walk & the cache.** On start & on each return to the front, walk the folders (`DocumentsContract` child queries), & re-read each `.org` file whose size or last-modified time changed; drop files that are gone. Keep one `OrgFile` per document URI. Read as UTF-8; `OrgFile` keeps the BOM & line endings.
-6. **Conflict banner.** A file w/ `OrgFile.hasConflictMarkers` shows a banner atop the views that use it & opens read-only (section 4 rule 4).
-7. **The Agenda zoom level.** A day-by-day list from `Entry.agendaDates(from, to)` & the todo list from `Entry.inTodoList` (every open TODO, dated or not; COMMENT & `:ARCHIVE:` subtrees skipped). Show time, title, state, priority, tags (own & inherited), & category. A tap does naught yet.
-8. **Tests.** Unit tests for the walk's filter (dot-files, flat vs. recursive) & the change check (size & time); no UI tests.
+6. **The Agenda zoom level.** A day-by-day list from `Entry.agendaDates(from, to)` & the todo list from `Entry.inTodoList` (every open TODO, dated or not; COMMENT & `:ARCHIVE:` subtrees skipped). Show time, title, state, priority, tags (own & inherited), & category. A tap does naught yet.
+7. **Tests.** Unit tests for the walk's filter (dot-files, flat vs. recursive) & the change check (size & time); no UI tests.
 
 ## Phase 3: Day, Week, & Month
 
@@ -34,7 +33,6 @@
 2. **Save**: read the file fresh, apply the `Edit` w/ `OrgWriter(clock, settings)`, & write the whole file at once (`openOutputStream(uri, "wt")`). Results:
 	* `Written`: replace the cached `OrgFile`.
 	* `Conflict`: keep the form open w/ the edit, re-read, & offer a retry.
-	* `ConflictMarkers`: show the banner; no write.
 	* `Locked`: the field was locked at read; refresh the form.
 	* `Blocked(reason)`: show the reason (an open child or an unchecked box, per the enforced dependencies).
 3. **Notes**: a state whose keyword asks for a note (`@`) opens a note field; an empty note logs the line alone.

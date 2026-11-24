@@ -322,9 +322,6 @@ class OrgFile(val path: String, val document: OrgDocument, settings: OrgSettings
 	val keywords: TodoKeywords = TodoKeywords.of(document, this.settings.todoKeywords)
 	val priorities: Priorities = Priorities.of(document, this.settings.priorities)
 
-	// A file w/ git conflict markers is read-only whole (DESIGN.md section 4 rule 4).
-	val hasConflictMarkers: Boolean = document.lines.any { CONFLICT_MARKER.matches(it.text) }
-
 	// The tags of every #+FILETAGS: line, in file order, as org-set-regexps-and-options collects them.
 	val fileTags: List<String> =
 		document.keywordValues("FILETAGS").flatMap { value -> OrgDocument.words(value).flatMap { HeadlineRegex.splitTags(it) } }
@@ -447,10 +444,6 @@ class OrgFile(val path: String, val document: OrgDocument, settings: OrgSettings
 		const val COMMENT = "COMMENT"
 		const val ARCHIVE = "ARCHIVE"
 		private const val ORDERED = "ORDERED"
-
-		// The lines that git writes around a conflict: <<<<<<< and >>>>>>> w/ a label, ||||||| w/ the
-		// base label of the diff3 style, and ======= alone, so a rule of more = signs is plain text.
-		private val CONFLICT_MARKER = Regex("""(<{7}|>{7}|\|{7}) .*|={7}""")
 
 		// An unchecked or partly checked box on a list item, as org-block-todo-from-checkboxes finds it.
 		private val CHECKBOX = Regex("""[ \t]*(?:[-+*]|\d+[.)])[ \t]+(?:\[@(?:start:)?(?:\d+|[A-Za-z])\][ \t]*)?\[[- ]\].*""", RegexOption.DOT_MATCHES_ALL)
