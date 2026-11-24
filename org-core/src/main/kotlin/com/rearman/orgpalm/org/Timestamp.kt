@@ -41,14 +41,6 @@ data class Repeater(val mark: String, val value: Int, val unit: RepeatUnit, val 
 	}
 }
 
-// How a line after the property drawer of calendar.org reads: a timestamp the app models, or a shape it
-// shows read-only (a diary sexp, a date range, two timestamps, a timestamp w/ text after it, an inactive
-// or a malformed timestamp).
-enum class LineShape { READABLE, UNREADABLE }
-
-// One line of the timestamp block: its shape and its stamp, null when the text does not parse.
-data class TimestampLine(val shape: LineShape, val stamp: Timestamp?)
-
 // An Org timestamp: <2026-11-23 Mon 09:00-10:00 +2w -1d> when active, [...] when inactive. The day name
 // is not kept; format() writes the English one, as Org does under the C locale. [warning] is the
 // warning or delay cookie ("-2d" or "--2d") as written, and [warningFirst] records that it came ahead
@@ -184,10 +176,6 @@ data class Timestamp(
 		private val WARNING = Regex("""--?\d+[hdwmy]""")
 		private val DAY_NAME = Regex("""\p{L}+\.?""")
 
-		// Text that begins w/ a timestamp, active or inactive, or a diary sexp: in calendar.org a line
-		// that begins so is a timestamp line.
-		internal val LINE_START = Regex("""(?:[<\[]\d{4}-\d{2}-\d{2}|<%%\().*""", RegexOption.DOT_MATCHES_ALL)
-
 		// An active timestamp, or what looks like one, anywhere in a line.
 		internal val ACTIVE = Regex("""<\d{4}-\d{2}-\d{2}[^<>\n]*>""")
 
@@ -246,24 +234,5 @@ data class Timestamp(
 			if (repeater == null) warningFirst = false
 			return Timestamp(date, start, end, repeater, warning, active, warningFirst)
 		}
-
-		// The shape of a line in the timestamp block of calendar.org, or null when the line does not
-		// begin w/ a timestamp (it then begins the body). Only a line that holds one active timestamp,
-		// w/o a habit repeater, and naught else reads.
-		fun lineShape(text: String): LineShape? = readLine(text)?.shape
-
-		// A timestamp line read once: its shape and its stamp (null when the text does not parse; an
-		// inactive or a habit stamp parses yet has the shape UNREADABLE). Null when the line does not
-		// begin w/ a timestamp.
-		fun readLine(text: String): TimestampLine? {
-			val t = text.trim { OrgDocument.isBlankChar(it) }
-			if (!LINE_START.matches(t)) return null
-			val ts = parse(t)
-			val shape = if (ts != null && ts.active && ts.repeater?.habit == null) LineShape.READABLE else LineShape.UNREADABLE
-			return TimestampLine(shape, ts)
-		}
-
-		// True when [text] holds an active timestamp or a diary sexp anywhere, as a title may.
-		internal fun containsActive(text: String): Boolean = ACTIVE.containsMatchIn(text) || text.contains("<%%(")
 	}
 }

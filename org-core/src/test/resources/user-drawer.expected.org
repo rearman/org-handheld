@@ -1,0 +1,28 @@
+#+FILETAGS: :home:
+
+* Shop renovation :undertaking:
+** NEXT Order the fan motor :call:
+SCHEDULED: <2026-11-24 Tue>
+:LOGBOOK:
+- State "NEXT"       from "TODO"       [2026-11-20 Fri 09:00]
+:END:
+Ask for the 1.5 hp model.
+** DONE Pick up the motor
+CLOSED: [2026-11-23 Mon 14:30]
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-11-23 Mon 14:30]
+:END:
+** WAITING Electrician quote :call:
+- State "WAITING"    from "TODO"       [2026-11-19 Thu 10:00] \\
+  Called Tuesday.
+* Errands
+** TODO Hardware store run :errand:
+- [ ] Wire nuts
+- [X] Tape
+* Inbox
+** TODO Call the vendor about the seal kit                             :call:
+DEADLINE: <2026-11-27 Fri>
+DEADLINE: <2026-12-04 Fri> was the first quote.
+* Routine
+** NEXT Weekly oil check
+SCHEDULED: <2026-11-16 Mon +1w>

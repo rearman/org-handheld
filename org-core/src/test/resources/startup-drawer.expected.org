@@ -1,0 +1,9 @@
+#+STARTUP: logdrawer
+#+TODO: TODO WAIT(w@/!) | DONE(d!)
+
+* DONE Fix the door
+CLOSED: [2026-11-23 Mon 14:30] SCHEDULED: <2026-11-24 Tue>
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2026-11-23 Mon 14:30]
+:END:
+Hinges squeak.

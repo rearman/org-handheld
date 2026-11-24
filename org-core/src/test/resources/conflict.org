@@ -1,0 +1,9 @@
+#+TODO: TODO | DONE
+
+* TODO Shared task
+<<<<<<< HEAD
+Phone text.
+=======
+Desk text.
+>>>>>>> origin/main
+* Other

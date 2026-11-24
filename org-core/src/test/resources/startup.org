@@ -1,0 +1,6 @@
+#+STARTUP: logdrawer
+#+TODO: TODO WAIT(w@/!) | DONE(d!)
+
+* TODO Fix the door
+SCHEDULED: <2026-11-24 Tue>
+Hinges squeak.

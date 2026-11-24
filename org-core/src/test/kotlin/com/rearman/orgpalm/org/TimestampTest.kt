@@ -31,22 +31,22 @@ class TimestampTest {
 		try {
 			Locale.setDefault(Locale.forLanguageTag("ar-EG"))
 			assertEquals("<2026-11-23 Mon 09:05-10:00>", Fixtures.ts("<2026-11-23 Mon 09:05-10:00>").format())
-			val done = Fixtures.writer().apply(Fixtures.text("todo.org"), FileKind.TODO, Edit.Update(Fixtures.VFD, listOf(FieldChange.State("DONE"))))
-			assertEquals(WriteResult.Written(Fixtures.text("todo-done.expected.org"), Fixtures.VFD), done)
+			val text = Fixtures.text("todo.org")
+			val done = Fixtures.writer().apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.VFD), listOf(FieldChange.State("DONE"))))
+			assertEquals(Fixtures.text("todo-done.expected.org"), (done as WriteResult.Written).text)
 		} finally {
 			Locale.setDefault(saved)
 		}
 	}
 
+	// A stamp line holds one active timestamp and naught else (DESIGN.md section 3, Events).
 	@Test
-	fun lineShapesOfTheTimestampBlock() {
-		assertEquals(LineShape.READABLE, Timestamp.lineShape("<2026-11-23 Mon 07:00-08:00 +2w>"))
+	fun stampLinesHoldOneActiveStampAlone() {
+		assertEquals(Fixtures.ts("<2026-11-23 Mon 07:00-08:00 +2w>"), Section.stampOf("  <2026-11-23 Mon 07:00-08:00 +2w>"))
 		for (t in listOf(
-			"<%%(diary-float t 3 3)>", "<2026-12-21 Mon>--<2026-12-23 Wed>", "<2026-02-30 Mon>",
-			"<2026-01-31 Sat .+1d/3d>", "<2026-11-23 Mon> <2026-11-26 Thu>", "<2026-11-23 Mon> call the rep",
-			"[2026-11-20 Fri]",
-		)) assertEquals(t, LineShape.UNREADABLE, Timestamp.lineShape(t))
-		assertNull(Timestamp.lineShape("Call <2026-11-23 Mon> first"))
+			"<%%(diary-float t 3 3)>", "<2026-12-21 Mon>--<2026-12-23 Wed>", "<2026-02-30 Mon>", "<2026-11-23 Mon> <2026-11-26 Thu>",
+			"<2026-11-23 Mon> call the rep", "[2026-11-20 Fri]", "Call <2026-11-23 Mon> first",
+		)) assertNull(t, Section.stampOf(t))
 	}
 
 	// repeats.txt holds, for each timestamp, the dates on which Emacs's agenda shows it as a plain

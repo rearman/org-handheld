@@ -2,33 +2,36 @@ package com.rearman.orgpalm.org
 
 import java.time.LocalDateTime
 
-// The fixture files of src/test/resources, and the fixed clock and UUID that tools/make-fixtures.el
-// gives Emacs.
+// The fixture files of src/test/resources, and the fixed clock that tools/make-fixtures.el gives Emacs.
 object Fixtures {
 	val NOW: LocalDateTime = LocalDateTime.of(2026, 11, 23, 14, 30)
-	const val NEW_ID = "11111111-2222-4333-8444-555555555555"
 
 	// The hand-made inputs.
 	val INPUTS = listOf(
 		"calendar.org", "todo.org", "memos.org", "crlf.org", "foreign.org", "logbook.org", "children.org",
-		"no-final-newline.org", "readonly.org", "bom.org", "mixed.org", "noid.org", "repeat.org", "empty.org",
-		"move.org", "repeat2.org",
+		"no-final-newline.org", "readonly.org", "bom.org", "mixed.org", "repeat.org", "empty.org", "move.org",
+		"repeat2.org", "outline.org", "conflict.org", "user.org", "startup.org",
 	)
 
 	// The cases whose <case>.expected.org Emacs writes.
 	val CASES = listOf(
 		"todo-done", "todo-reopen", "todo-next", "deadline-set", "deadline-remove", "schedule-add",
 		"schedule-remove", "priority-set", "priority-remove", "tags-set", "tags-clear", "title-edit", "body-edit",
-		"category-rename", "task-append", "task-append-middle", "task-delete", "warn-set", "warn-change",
-		"warn-remove", "timestamp-change", "weekdays-add", "weekdays-remove", "repeater-change", "event-tags",
-		"event-title", "event-append", "event-delete", "crlf-done", "logbook-done", "logbook-body", "foreign-warn",
-		"missing-ids", "write-adds-ids", "children-delete", "children-title", "memo-title", "memo-append",
-		"escape-title", "escape-keyword", "rebase-title", "repeat-plus", "repeat-dot", "repeat-plusplus",
-		"repeat-month-end", "repeat-plain-scheduled", "repeat-warning", "schedule-beside-deadline",
-		"deadline-beside-schedule", "drawer-remove", "bom-title", "bom-append", "mixed-warn", "mixed-append",
-		"empty-append", "task-move", "note-move-middle", "note-move-end", "category-create", "repeat-no-keyword",
-		"repeat-habit", "repeat-to-state", "repeat-typed", "move-new-category", "repeat-delay",
-		"repeat-to-unknown-state", "repeat-zero-first", "repeat-body-stamp",
+		"task-append", "task-append-middle", "task-delete", "warn-set", "warn-change", "warn-remove",
+		"timestamp-change", "weekdays-add", "weekdays-remove", "repeater-change", "event-tags", "event-title",
+		"event-append", "event-delete", "crlf-done", "logbook-done", "logbook-body", "foreign-warn",
+		"children-delete", "children-title", "memo-title", "memo-append", "escape-title", "escape-keyword",
+		"repeat-plus", "repeat-dot", "repeat-plusplus", "repeat-month-end", "repeat-plain-scheduled",
+		"repeat-warning", "schedule-beside-deadline", "deadline-beside-schedule", "drawer-remove", "bom-title",
+		"bom-append", "mixed-warn", "mixed-append", "empty-append", "task-move", "note-move-middle",
+		"note-move-end", "repeat-no-keyword", "repeat-habit", "repeat-to-state", "repeat-typed", "repeat-delay",
+		"repeat-to-unknown-state", "repeat-zero-first", "repeat-body-stamp", "outline-tags-top",
+		"outline-done-deep", "outline-insert-deep", "outline-refile", "refile-across-source",
+		"refile-across-target", "capture-first", "capture-first-top", "user-done", "user-waiting-note",
+		"user-reschedule", "user-title", "user-refile", "user-refile-top", "user-blocked", "user-blocked-box",
+		"user-priority-set", "user-priority-default", "user-drawer", "user-leave-waiting", "user-unschedule",
+		"user-undeadline", "user-state-and-date", "user-repeat", "user-empty-note", "refile-first-top-heading",
+		"startup-drawer", "repeat-closing-note",
 	)
 
 	fun bytes(name: String): ByteArray =
@@ -36,9 +39,26 @@ object Fixtures {
 
 	fun text(name: String): String = String(bytes(name), Charsets.UTF_8)
 
-	fun writer(): OrgWriter = OrgWriter({ NOW }, { NEW_ID })
+	// A fixture parsed under its own name, which gives the category of last resort.
+	fun file(name: String, settings: OrgSettings = OrgSettings.STOCK): OrgFile = OrgFile.parse(name, text(name), settings)
+
+	// The values under which make-fixtures.el runs its first cases: Org's stock values, save
+	// org-log-done 'time, which those cases have always set.
+	val BASE = OrgSettings(logDone = LogMode.TIME)
+
+	fun writer(settings: OrgSettings = BASE): OrgWriter = OrgWriter({ NOW }, settings)
 
 	fun ts(text: String): Timestamp = Timestamp.parse(text) ?: error("Not a timestamp: $text")
+
+	// The entry of [text] whose :ID: is [id]. The IDs only label the fixture headings; org-core
+	// writes none.
+	fun entry(text: String, id: String): Entry = OrgFile.parse("", text).entries.single { it.property("ID") == id }
+
+	fun anchor(text: String, id: String): Anchor = entry(text, id).anchor
+
+	// The anchor of the one heading of [text] whose line begins w/ [prefix].
+	fun headingAnchor(text: String, prefix: String): Anchor =
+		OrgFile.parse("", text).entries.single { it.anchor.headingLine.startsWith(prefix) }.anchor
 
 	// The :ID:s of the fixture headings.
 	const val PM = "6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10"
@@ -49,7 +69,7 @@ object Fixtures {
 	const val IO_LIST = "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04"
 	const val UNFILED = "e1f6c9b3-2a85-4d07-8b4c-0d3e7a5f1b96"
 	const val FRICK = "a2d5f8c1-6e39-4b07-9c4a-3f1b7e0d2c65"
-	const val MEMO_WORK = "4b9e2c7a-1d06-4f83-a5b2-9e0c3d7f6a18"
+	const val MEMO_UNFILED = "d8a3e6f0-7b12-4c95-8e4d-5a0f2b9c1e73"
 	const val GASKET = "b85d1e3a-6c07-4f29-9a4e-0d7f2c8b1e53"
 	const val VENDOR = "e4b7a1c9-0d52-4e8f-b3a6-7c1d9f2e0a85"
 	const val TRANSMITTER = "6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58"
@@ -58,12 +78,15 @@ object Fixtures {
 	const val NF_UNFILED = "5d0a8c3f-7e21-4b94-a6d8-3c9f1e7b0a42"
 	const val BOM_NOTE = "9e2c4f7a-6b03-4d18-a5e9-1c8f0b3d7a64"
 	const val MIXED = "4a1f7c0e-2b96-4d38-8e5a-7c3d0f9b6e21"
+	const val SHUTDOWN = "7b3e0a6d-1c95-4f28-8d4b-6f2a9e1c7d03"
 	const val OIL_CHECK = "a1c4e7f0-2b5d-4893-b6e9-c2f5a8d1b4e7"
 	const val FILTER = "b2d5f8a1-3c6e-4904-87fa-d3a6b9e2c5f8"
 	const val REPORT = "c3e6a9b2-4d7f-4a15-98ab-e4b7c0f3d6a9"
 	const val VALVE_TEST = "d4f7b0c3-5e80-4b26-a9bc-f5c8d1a4e7b0"
 	const val LOG_REVIEW = "e5a8c1d4-6f91-4c37-bacd-a6d9e2b5f8c1"
 	const val SENSOR = "f6b9d2e5-7a02-4d48-8bde-b7eaf3c6a9d2"
+	const val MOVE_WORK = "71c3e9a5-0d26-4b84-9f17-2a6e8c4b0d39"
+	const val MOVE_SHOP = "93e50bc7-2f48-4da6-91b9-4c80ae6d2f5b"
 	const val PUMP = "82d4fab6-1e37-4c95-80a8-3b7f9d5c1e4a"
 	const val FORKLIFT = "a4f61cd8-3059-4eb7-a2ca-5d91bf7e306c"
 	const val SWEEP = "28b4d6fa-1c3e-4057-9b2d-4f6c8e0a2b3d"

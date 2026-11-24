@@ -76,6 +76,13 @@ class OrgDocument private constructor(val bom: Boolean, val lines: List<Line>) {
 
 	fun render(): String = render(bom, lines)
 
+	// The values of every "#+NAME:" line (case aside), in file order, each w/ the text after the colon
+	// as written. Limit: a line inside a block counts, where Org's org-collect-keywords would skip it.
+	fun keywordValues(name: String): List<String> {
+		val re = Regex("""[ \t]*#\+""" + Regex.escape(name) + """:(.*)""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+		return lines.mapNotNull { re.matchEntire(it.text)?.groupValues?.get(1) }
+	}
+
 	// The lines of a heading's own section, the heading line first.
 	fun sectionLines(h: Heading): List<Line> = lines.subList(h.start, h.end)
 
@@ -162,9 +169,10 @@ class OrgDocument private constructor(val bom: Boolean, val lines: List<Line>) {
 data class PropertyLine(val index: Int, val key: String, val value: String)
 
 // The layout of one heading's section, per DESIGN.md section 3: the heading line, an optional planning
-// line right after it, an optional property drawer right after that, then (in calendar.org) the
-// timestamp lines, then the body. Other drawers (a LOGBOOK, say) ahead of the timestamps or the body are
-// skipped and kept. All indices point into the line list from which the section was read.
+// line right after it, an optional property drawer right after that, then the body, the section text
+// after any further drawers (a LOGBOOK, say), as Org holds it. [stampEnd] ends the body's leading stamp
+// lines, each of which holds one active timestamp and naught else (DESIGN.md section 3, Events); they
+// stay part of the body. All indices point into the line list from which the section was read.
 class Section private constructor(
 	val start: Int,
 	val end: Int,
@@ -172,12 +180,9 @@ class Section private constructor(
 	val drawerStart: Int?,
 	val drawerEnd: Int?,
 	val metaEnd: Int,
-	val timestampStart: Int,
-	val timestampEnd: Int,
 	val bodyStart: Int,
+	val stampEnd: Int,
 	val bodyEnd: Int,
-	// The calendar.org layout: timestamp lines, and their escape in the body.
-	val timestampLayout: Boolean,
 ) {
 	// Every property line of the drawer.
 	fun properties(lines: List<Line>): List<PropertyLine> {
@@ -194,28 +199,32 @@ class Section private constructor(
 	// The planning line, parsed; Planning.NONE w/o one.
 	fun planning(lines: List<Line>): Planning = planningLine?.let { Planning.parse(lines[it].text) } ?: Planning.NONE
 
-	// The timestamp lines, each read once for its shape and its stamp.
-	fun timestampLines(lines: List<Line>): List<TimestampLine> =
-		(timestampStart until timestampEnd).mapNotNull { Timestamp.readLine(lines[it].text) }
+	// The stamps of the leading stamp lines.
+	fun stamps(lines: List<Line>): List<Timestamp> = (bodyStart until stampEnd).mapNotNull { stampOf(lines[it].text) }
 
-	// The stamps of the timestamp lines, null for text that does not parse. An inactive or a habit
-	// stamp parses, though its line is UNREADABLE (Timestamp.readLine).
-	fun timestamps(lines: List<Line>): List<Timestamp?> = timestampLines(lines).map { it.stamp }
+	// True when the leading stamp lines make an event, whose form shows the rest of the body as text.
+	fun isEvent(lines: List<Line>): Boolean = OrgFile.eventStamps(stamps(lines)) != null
 
-	// The body text, its escapes undone.
-	fun body(lines: List<Line>): String =
-		(bodyStart until bodyEnd).joinToString("\n") { Escape.unBodyLine(lines[it].text, timestampLayout) }
+	// The body text as written.
+	fun body(lines: List<Line>): String = text(lines, bodyStart)
+
+	// The body after the leading stamp lines.
+	fun rest(lines: List<Line>): String = text(lines, stampEnd)
+
+	private fun text(lines: List<Line>, from: Int): String = (from until bodyEnd).joinToString("\n") { lines[it].text }
 
 	companion object {
 		internal val PLANNING_LINE = Regex("^[ \\t]*(?:${PlanKey.ALTERNATION}):")
 		private val PROPERTIES = Regex("[ \\t]*:PROPERTIES:[ \\t]*", RegexOption.IGNORE_CASE)
-		private val END = Regex("[ \\t]*:END:[ \\t]*", RegexOption.IGNORE_CASE)
+		internal val END = Regex("[ \\t]*:END:[ \\t]*", RegexOption.IGNORE_CASE)
 		internal val DRAWER = Regex("[ \\t]*:[\\w-]+:[ \\t]*")
 		private val PROPERTY_LINE = Regex("[ \\t]*:(\\S+?):(?:[ \\t]+(.*?))?[ \\t]*", RegexOption.DOT_MATCHES_ALL)
 
-		// Read the section of the heading at line [start]. [timestamps] reads the timestamp lines of the
-		// calendar.org layout; w/o it those lines count as body.
-		fun of(lines: List<Line>, start: Int, timestamps: Boolean): Section {
+		// The stamp of a line that holds one active timestamp and naught else, or null.
+		fun stampOf(text: String): Timestamp? = Timestamp.parse(text.trim { OrgDocument.isBlankChar(it) })?.takeIf { it.active }
+
+		// Read the section of the heading at line [start].
+		fun of(lines: List<Line>, start: Int): Section {
 			var end = start + 1
 			while (end < lines.size && OrgDocument.headingLevel(lines[end].text) == 0) end++
 			var i = start + 1
@@ -235,18 +244,11 @@ class Section private constructor(
 				}
 			}
 			val metaEnd = i
-			var t = skipDrawers(lines, metaEnd, end)
-			val timestampStart = t
-			if (timestamps) {
-				while (t < end && Timestamp.lineShape(lines[t].text) != null) t++
-			}
-			val timestampEnd = t
-			val bodyStart = skipDrawers(lines, t, end)
+			val bodyStart = skipDrawers(lines, metaEnd, end)
 			val bodyEnd = maxOf(bodyStart, OrgDocument.lastNonBlank(lines, bodyStart, end) + 1)
-			return Section(
-				start, end, planning, drawerStart, drawerEnd, metaEnd, timestampStart, timestampEnd, bodyStart, bodyEnd,
-				timestamps,
-			)
+			var stampEnd = bodyStart
+			while (stampEnd < bodyEnd && stampOf(lines[stampEnd].text) != null) stampEnd++
+			return Section(start, end, planning, drawerStart, drawerEnd, metaEnd, bodyStart, stampEnd, bodyEnd)
 		}
 
 		// The :END: line that closes the drawer opened at [open], within the section.

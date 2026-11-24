@@ -6,6 +6,3 @@
 Body one
 Body two
 * B
-:PROPERTIES:
-:ID:       11111111-2222-4333-8444-555555555555
-:END:

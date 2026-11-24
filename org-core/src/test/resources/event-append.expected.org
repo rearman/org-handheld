@@ -21,7 +21,6 @@ Bring the oil analysis kit.
 
 * Ammonia leak drill
 :PROPERTIES:
-:ID:       11111111-2222-4333-8444-555555555555
 :APPT_WARNTIME: 30
 :END:
 <2026-12-03 Thu 13:30-14:30>

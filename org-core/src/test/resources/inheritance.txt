@@ -1,0 +1,22 @@
+# Written by tools/make-fixtures.el: file, heading line index, category, tags, outline path.
+outline.org	7	Office	plant:mech	
+outline.org	8	Office	plant:mech:urgent	Compressors
+outline.org	11	Office	mech:urgent:plant	Compressors|Oil change on C3
+outline.org	13	Office	plant:mech:urgent	Compressors|Oil change on C3
+outline.org	16	Office	plant:mech:private	Compressors
+outline.org	20	Capital	plant	
+outline.org	24	Capital	plant:mech	Projects
+outline.org	25	Capital	plant:mech	Projects|Condenser retrofit
+outline.org	27	Electrical	plant:mech	Projects|Condenser retrofit|Submittal review
+outline.org	32	Office	plant	
+outline.org	34	Office	plant	Admin
+calendar.org	0	calendar		
+calendar.org	8	calendar	private	
+calendar.org	14	calendar		
+todo.org	2	Work		
+todo.org	7	Work	private	Work
+todo.org	13	Work		Work
+todo.org	19	Unfiled		
+memos.org	0	Work		
+memos.org	5	Work		Work
+memos.org	11	Unfiled		

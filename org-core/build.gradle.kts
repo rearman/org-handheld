@@ -2,7 +2,7 @@ plugins {
 	id("org.jetbrains.kotlin.jvm")
 }
 
-// The Org parser, record model, writer, and rebase of org-palm: pure JVM, w/ no runtime dependency.
+// The Org parser, entry model, writer, and anchors of org-palm: pure JVM, w/ no runtime dependency.
 kotlin {
 	jvmToolchain(17)
 }

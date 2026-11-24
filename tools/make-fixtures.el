@@ -8,16 +8,22 @@
 ;; org-core/src/test/resources/, applies the edit through Org's own
 ;; commands, and writes <case>.expected.org beside it. It also writes
 ;; repeats.txt, the dates on which Org's agenda shows each repeating
-;; timestamp of a list. The Kotlin tests compare org-core against both.
+;; timestamp of a list, and inheritance.txt, the category, the tags
+;; (w/ inheritance), and the outline path that Org gives each heading of
+;; a few inputs (inheritance-user.txt under the user's settings), and
+;; agenda.txt, the dates of date ranges and diary sexps. The Kotlin tests
+;; compare org-core against all of them.
 ;;
-;; The clock, the UUIDs, the locale, and the Org settings are fixed, and
-;; each file keeps the line endings it was read with, so a second run
-;; gives no diff.
+;; The cases run under Org's stock settings, save org-log-done 'time,
+;; and the user-* cases under the user's settings (`mf-user', as init.el
+;; sets them). The clock, the locale, and the Org settings are fixed, and each file
+;; keeps the line endings it was read with, so a second run gives no
+;; diff.
 
 (require 'cl-lib)
 (require 'org)
-(require 'org-id)
 (require 'org-agenda)
+(require 'org-capture)
 
 (defconst mf-dir (expand-file-name "org-core/src/test/resources/" default-directory)
 	"The fixture folder.")
@@ -25,10 +31,8 @@
 (defconst mf-now (encode-time (list 0 30 14 23 11 2026 nil -1 nil))
 	"The fixed clock: 2026-11-23 14:30 local time.")
 
-(defconst mf-new-id "11111111-2222-4333-8444-555555555555"
-	"The UUID that `org-id-get-create' gets for a new ID.")
-
-;; Org's defaults where the design names them, and English day names.
+;; Org's defaults where the design names them, and English day names. No
+;; refile bookmark, so that a run leaves the user's bookmark file alone.
 (setq org-tags-column -77
 	org-auto-align-tags t
 	org-log-done 'time
@@ -37,11 +41,10 @@
 	org-todo-log-states nil
 	org-adapt-indentation nil
 	org-closed-keep-when-no-todo nil
-	org-id-track-globally nil
-	org-id-method 'uuid
 	org-agenda-skip-timestamp-if-done nil
 	org-agenda-show-future-repeats t
 	org-agenda-prefer-last-repeat nil
+	org-bookmark-names-plist nil
 	system-time-locale "C"
 	make-backup-files nil)
 
@@ -50,6 +53,13 @@
 	(goto-char (point-min))
 	(unless (re-search-forward (concat "^:ID:[ \t]+" (regexp-quote id) "[ \t]*$") nil t)
 		(error "No heading with ID %s" id))
+	(org-back-to-heading t))
+
+(defun mf-goto-heading (text)
+	"Move point to the first heading line that begins w/ TEXT."
+	(goto-char (point-min))
+	(unless (re-search-forward (concat "^" (regexp-quote text)) nil t)
+		(error "No heading %s" text))
 	(org-back-to-heading t))
 
 (defmacro mf-with-fixed-clock (&rest body)
@@ -62,40 +72,57 @@ Lisp functions that read the clock are replaced as well."
 						 ((symbol-function 'org-today) (lambda () (time-to-days mf-now))))
 		 ,@body))
 
-(defun mf-case (name input fn)
-	"Visit a copy of INPUT, call FN at the start of the buffer, and write NAME.expected.org.
-Emacs detects the coding system and line endings as it does for any file
-(a file of mixed line endings reads as LF w/ the carriage returns kept as
-text), and the output keeps them. A state-change log note, which Org
-writes from `post-command-hook', is written ere the file is saved."
-	(let* ((in (expand-file-name input mf-dir))
-				 (out (expand-file-name (concat name ".expected.org") mf-dir))
-				 (tmp (expand-file-name (concat "mf-" name ".org") temporary-file-directory)))
-		(copy-file in tmp t)
+(defun mf-visit (input name)
+	"Visit a temporary copy of INPUT named after NAME.
+Return the buffer and the coding system to write it w/. Emacs detects the
+coding system and line endings as it does for any file (a file of mixed
+line endings reads as LF w/ the carriage returns kept as text), and the
+output keeps them."
+	(let ((tmp (expand-file-name (concat "mf-" name ".org") temporary-file-directory)))
+		(copy-file (expand-file-name input mf-dir) tmp t)
 		(let ((buf (find-file-noselect tmp)))
-			(unwind-protect
-					(with-current-buffer buf
-						(let ((coding buffer-file-coding-system))
-							;; An ASCII file reads as undecided; write it as UTF-8 w/ the same line endings.
-							(when (eq (coding-system-base coding) 'undecided)
-								(setq coding (coding-system-change-text-conversion coding 'utf-8)))
-							;; A file w/o a line ending (an empty one) gets LF on every system.
-							(when (or (= (buffer-size) 0) (vectorp (coding-system-eol-type coding)))
-								(setq coding (coding-system-change-eol-conversion coding 'unix)))
-							(goto-char (point-min))
-							(mf-with-fixed-clock
-								(cl-letf (((symbol-function 'org-id-new) (lambda (&rest _) mf-new-id)))
-									(funcall fn)
-									(run-hooks 'post-command-hook)))
-							(let ((coding-system-for-write coding))
-								(write-region nil nil out nil 'silent))))
-				(with-current-buffer buf (set-buffer-modified-p nil))
-				(kill-buffer buf)
-				(delete-file tmp)))))
+			(with-current-buffer buf
+				(let ((coding buffer-file-coding-system))
+					;; An ASCII file reads as undecided; write it as UTF-8 w/ the same line endings.
+					(when (eq (coding-system-base coding) 'undecided)
+						(setq coding (coding-system-change-text-conversion coding 'utf-8)))
+					;; A file w/o a line ending (an empty one) gets LF on every system.
+					(when (or (= (buffer-size) 0) (vectorp (coding-system-eol-type coding)))
+						(setq coding (coding-system-change-eol-conversion coding 'unix)))
+					(cons buf coding))))))
 
-(defun mf-id ()
-	"Give the current heading an :ID: w/ `org-id-get-create'."
-	(org-id-get-create))
+(defun mf-save (visit name)
+	"Write the buffer of VISIT (from `mf-visit') to NAME.expected.org."
+	(with-current-buffer (car visit)
+		(let ((coding-system-for-write (cdr visit)))
+			(write-region nil nil (expand-file-name (concat name ".expected.org") mf-dir) nil 'silent))))
+
+(defun mf-discard (visit)
+	"Kill the buffer of VISIT unsaved and delete its temporary file."
+	(let* ((buf (car visit))
+				 (file (buffer-file-name buf)))
+		(with-current-buffer buf (set-buffer-modified-p nil))
+		(kill-buffer buf)
+		(delete-file file)))
+
+(defun mf-run (fn)
+	"Call FN w/ the fixed clock.
+A state-change log note, which Org writes from `post-command-hook', is
+written ere the file is saved."
+	(mf-with-fixed-clock
+		(funcall fn)
+		(run-hooks 'post-command-hook)))
+
+(defun mf-case (name input fn)
+	"Visit a copy of INPUT, call FN at the start of the buffer, and write NAME.expected.org."
+	(let ((visit (mf-visit input name)))
+		(unwind-protect
+				(progn
+					(with-current-buffer (car visit)
+						(goto-char (point-min))
+						(mf-run fn))
+					(mf-save visit name))
+			(mf-discard visit))))
 
 (defun mf-ts (y m d &optional h min extra inactive)
 	"Insert an Org timestamp for Y-M-D, w/ H:MIN when H is non-nil, and EXTRA before the bracket."
@@ -160,25 +187,18 @@ writes from `post-command-hook', is written ere the file is saved."
 	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-edit-headline "Order VFD spares & fuses")))
 (mf-case "body-edit" "todo.org"
 	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (mf-set-body "Two ACS580s, frame R3.\nCheck stock first.")))
-(mf-case "category-rename" "todo.org"
-	(lambda ()
-		(mf-goto "c3e8b1a0-5d47-4f2a-9e6b-1a7c0d3f8e52")
-		(org-edit-headline "Shop")
-		(org-entry-put nil "CATEGORY" "Shop")))
 (mf-case "task-append" "todo.org"
 	(lambda ()
 		(mf-goto "e1f6c9b3-2a85-4d07-8b4c-0d3e7a5f1b96")
 		(org-insert-subheading '(4))
 		(insert "Order spare contactors")
 		(org-todo "TODO")
-		(mf-id)
 		(org-deadline nil "2026-12-01")))
 (mf-case "task-append-middle" "todo.org"
 	(lambda ()
 		(mf-goto "c3e8b1a0-5d47-4f2a-9e6b-1a7c0d3f8e52")
 		(org-insert-subheading '(4))
-		(insert "Check relief valves")
-		(mf-id)))
+		(insert "Check relief valves")))
 (mf-case "task-delete" "todo.org"
 	(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-cut-subtree)))
 
@@ -221,7 +241,6 @@ writes from `post-command-hook', is written ere the file is saved."
 		(goto-char (point-max))
 		(org-insert-heading-respect-content)
 		(insert "Ammonia leak drill")
-		(mf-id)
 		(org-entry-put nil "APPT_WARNTIME" "30")
 		(mf-set-timestamps (lambda () (mf-ts 2026 12 3 13 30 "-14:30") (insert "\n")))))
 (mf-case "event-delete" "calendar.org"
@@ -237,22 +256,6 @@ writes from `post-command-hook', is written ere the file is saved."
 	(lambda () (mf-goto "6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58") (mf-set-body "Use the Fluke 754.\nZero at 0 psig.")))
 (mf-case "foreign-warn" "foreign.org"
 	(lambda () (mf-goto "e4b7a1c9-0d52-4e8f-b3a6-7c1d9f2e0a85") (org-entry-put nil "APPT_WARNTIME" "20")))
-(mf-case "missing-ids" "noid.org"
-	(lambda ()
-		(goto-char (point-min))
-		(re-search-forward "^\\* Shop")
-		(mf-id)
-		(re-search-forward "^\\*\\* TODO Check slide valve")
-		(mf-id)))
-(mf-case "write-adds-ids" "noid.org"
-	(lambda ()
-		(mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60")
-		(org-edit-headline "Rebuild compressor 4")
-		(goto-char (point-min))
-		(re-search-forward "^\\* Shop")
-		(mf-id)
-		(re-search-forward "^\\*\\* TODO Check slide valve")
-		(mf-id)))
 (mf-case "children-delete" "children.org"
 	(lambda () (mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60") (org-cut-subtree)))
 (mf-case "children-title" "children.org"
@@ -263,8 +266,7 @@ writes from `post-command-hook', is written ere the file is saved."
 	(lambda ()
 		(mf-goto "5d0a8c3f-7e21-4b94-a6d8-3c9f1e7b0a42")
 		(org-insert-subheading '(4))
-		(insert "Gate codes")
-		(mf-id)))
+		(insert "Gate codes")))
 
 ;;; Escapes: Org must read no tags and no keyword from an escaped title.
 
@@ -280,14 +282,6 @@ writes from `post-command-hook', is written ere the file is saved."
 		(org-todo 'none)
 		(org-edit-headline (concat (string #x200b) "TODO list review"))
 		(unless (null (org-get-todo-state)) (error "Escaped title reads as a keyword"))))
-
-;;; Rebase: Emacs marks a task DONE while the app edits its title.
-
-(mf-case "rebase-title" "todo.org"
-	(lambda ()
-		(mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37")
-		(org-todo "DONE")
-		(org-edit-headline "Order VFD spares & fuses")))
 
 ;;; Repeating tasks marked done: org-auto-repeat-maybe shifts the dates.
 
@@ -336,12 +330,11 @@ writes from `post-command-hook', is written ere the file is saved."
 ;;; A BOM, mixed line endings, and an empty file.
 
 (defun mf-append-top (title)
-	"Insert a top-level heading TITLE after the last top-level subtree, w/ an :ID:."
+	"Insert a top-level heading TITLE after the last top-level subtree."
 	(goto-char (point-max))
 	(when (re-search-backward "^\\* " nil t) (org-back-to-heading t))
 	(org-insert-heading-respect-content)
-	(insert title)
-	(mf-id))
+	(insert title))
 
 (mf-case "bom-title" "bom.org"
 	(lambda () (mf-goto "9e2c4f7a-6b03-4d18-a5e9-1c8f0b3d7a64") (org-edit-headline "Notes")))
@@ -356,7 +349,7 @@ writes from `post-command-hook', is written ere the file is saved."
 		(mf-append-top "First event")
 		(mf-set-timestamps (lambda () (mf-ts 2026 12 1) (insert "\n")))))
 
-;;; Categories: a task refiled to another, and a missing one made on first filing.
+;;; Refile: a task or a note moved under another heading of its file.
 
 (mf-case "task-move" "todo.org"
 	(lambda ()
@@ -373,19 +366,234 @@ writes from `post-command-hook', is written ere the file is saved."
 	(lambda () (mf-refile "a4f61cd8-3059-4eb7-a2ca-5d91bf7e306c" "71c3e9a5-0d26-4b84-9f17-2a6e8c4b0d39")))
 (mf-case "note-move-end" "move.org"
 	(lambda () (mf-refile "82d4fab6-1e37-4c95-80a8-3b7f9d5c1e4a" "93e50bc7-2f48-4da6-91b9-4c80ae6d2f5b")))
-(mf-case "move-new-category" "todo.org"
+
+;;; Any layout: edits at levels 1, 3, and 4 of a mixed file, and a refile.
+
+(mf-case "outline-tags-top" "outline.org"
+	(lambda () (mf-goto-heading "* Compressors") (org-set-tags '("mech" "shop"))))
+(mf-case "outline-done-deep" "outline.org"
+	(lambda () (mf-goto-heading "*** NEXT Order filters") (org-todo "DONE")))
+(mf-case "outline-insert-deep" "outline.org"
 	(lambda ()
-		(mf-append-top "Shop")
-		(org-entry-put nil "CATEGORY" "Shop")
-		(mf-refile "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37" mf-new-id)))
-(mf-case "category-create" "children.org"
-	(lambda ()
-		(mf-append-top "Unfiled")
-		(org-entry-put nil "CATEGORY" "Unfiled")
+		(mf-goto-heading "*** TODO Submittal review")
 		(org-insert-subheading '(4))
-		(insert "Order gaskets")
-		(org-todo "TODO")
-		(mf-id)))
+		(insert "Check breaker sizes")
+		(org-todo "TODO")))
+(mf-case "outline-refile" "outline.org"
+	(lambda ()
+		(let ((pos (save-excursion (mf-goto-heading "** Condenser retrofit") (point))))
+			(mf-goto-heading "** TODO Oil change on C3")
+			(org-refile nil nil (list "target" (buffer-file-name) nil pos)))))
+
+;;; A refile to another file: both files change.
+
+(defun mf-refile-across (name source heading target target-id)
+	"Refile the heading of SOURCE that begins w/ HEADING under the heading of
+TARGET whose :ID: is TARGET-ID, w/ `org-refile'. Write
+NAME-source.expected.org and NAME-target.expected.org."
+	(let ((src (mf-visit source (concat name "-source")))
+				(dst (mf-visit target (concat name "-target"))))
+		(unwind-protect
+				(let ((pos (with-current-buffer (car dst) (mf-goto target-id) (point)))
+							(file (buffer-file-name (car dst))))
+					(with-current-buffer (car src)
+						(mf-goto-heading heading)
+						(mf-run (lambda () (org-refile nil nil (list "target" file nil pos)))))
+					(mf-save src (concat name "-source"))
+					(mf-save dst (concat name "-target")))
+			(mf-discard src)
+			(mf-discard dst))))
+
+(mf-refile-across "refile-across" "outline.org" "*** Drain the separator"
+	"memos.org" "d8a3e6f0-7b12-4c95-8e4d-5a0f2b9c1e73")
+
+;;; Inheritance: what Org gives each heading of a few inputs.
+
+(defun mf-inheritance-rows (input)
+	"Return a line per heading of INPUT: its file, the index of its line,
+`org-get-category', `org-get-tags' w/ inheritance, and `org-get-outline-path'."
+	(let ((buf (find-file-noselect (expand-file-name input mf-dir)))
+				rows)
+		(unwind-protect
+				(with-current-buffer buf
+					(goto-char (point-min))
+					(unless (org-at-heading-p) (outline-next-heading))
+					(while (org-at-heading-p)
+						(push (concat input "\t" (number-to-string (1- (line-number-at-pos)))
+													"\t" (org-get-category)
+													"\t" (mapconcat #'substring-no-properties (org-get-tags) ":")
+													"\t" (mapconcat #'substring-no-properties (org-get-outline-path) "|"))
+									rows)
+						(outline-next-heading)))
+			(kill-buffer buf))
+		(nreverse rows)))
+
+(with-temp-buffer
+	(insert "# Written by tools/make-fixtures.el: file, heading line index, category, tags, outline path.\n")
+	(dolist (input '("outline.org" "calendar.org" "todo.org" "memos.org"))
+		(dolist (row (mf-inheritance-rows input)) (insert row "\n")))
+	(let ((coding-system-for-write 'utf-8-unix))
+		(write-region nil nil (expand-file-name "inheritance.txt" mf-dir) nil 'silent)))
+
+;;; Capture first: org-capture w/ :prepend t, under a heading and at the top level.
+
+(defun mf-capture-first (target)
+	"Capture \"* TODO Call the vendor\" w/ :prepend t into the current buffer's file under TARGET.
+TARGET is a heading's title, or nil for the top level of the file."
+	(let ((org-capture-templates
+				 `(("x" "x" entry
+						,(if target (list 'file+headline (buffer-file-name) target) (list 'file (buffer-file-name)))
+						"* TODO Call the vendor" :prepend t :immediate-finish t))))
+		(org-capture nil "x")))
+
+(mf-case "capture-first" "outline.org" (lambda () (mf-capture-first "Projects")))
+(mf-case "capture-first-top" "outline.org" (lambda () (mf-capture-first nil)))
+
+;;; The user's settings (DESIGN.md section 3, Emacs settings), as init.el sets them.
+
+(defmacro mf-user (&rest body)
+	"Run BODY under the user's Org settings.
+Their capture templates carry :prepend t, as `mf-capture-first' does."
+	`(let ((org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "BELAYED(b@)")))
+				 (org-tags-column 0)
+				 (org-priority-highest 1)
+				 (org-priority-lowest 5)
+				 (org-priority-default 5)
+				 (org-tags-exclude-from-inheritance '("undertaking"))
+				 (org-log-done 'time)
+				 (org-log-repeat 'time)
+				 (org-log-reschedule 'time)
+				 (org-log-redeadline 'time)
+				 (org-log-into-drawer nil)
+				 (org-log-state-notes-insert-after-drawers t)
+				 (org-reverse-note-order t)
+				 (org-enforce-todo-dependencies t)
+				 (org-enforce-todo-checkbox-dependencies t))
+		 ,@body))
+
+(defun mf-note (text)
+	"Finish the pending log note of Org's *Org Note* buffer w/ TEXT."
+	(with-current-buffer "*Org Note*"
+		(goto-char (point-max))
+		(insert text)
+		(org-store-log-note)))
+
+(mf-user
+	(mf-case "user-done" "user.org"
+		(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-todo "DONE")))
+	(mf-case "user-waiting-note" "user.org"
+		(lambda ()
+			(mf-goto-heading "** TODO Pick up the motor")
+			(org-todo "WAITING")
+			(run-hooks 'post-command-hook)
+			(mf-note "Waiting on the vendor quote.")))
+	(mf-case "user-reschedule" "user.org"
+		(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-schedule nil "2026-11-30")))
+	(mf-case "user-title" "user.org"
+		(lambda () (mf-goto-heading "** TODO Call the vendor") (org-edit-headline "Call the vendor about the gasket kit")))
+	(mf-case "user-refile" "user.org"
+		(lambda ()
+			(let ((pos (save-excursion (mf-goto-heading "* Shop renovation") (point))))
+				(mf-goto-heading "** TODO Hardware store run")
+				(org-refile nil nil (list "target" (buffer-file-name) nil pos)))))
+	(mf-case "user-refile-top" "user.org"
+		(lambda ()
+			(mf-goto-heading "** WAITING Electrician quote")
+			(org-refile nil nil (list "top" (buffer-file-name) nil nil))))
+	(mf-case "user-priority-set" "user.org"
+		(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-priority 1)))
+	(mf-case "user-priority-default" "user.org"
+		(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-priority 5)))
+	(mf-case "user-blocked" "user.org"
+		(lambda () (mf-goto-heading "* Shop renovation") (org-todo "DONE")))
+	(mf-case "user-blocked-box" "user.org"
+		(lambda () (mf-goto-heading "** TODO Hardware store run") (org-todo "DONE")))
+	(let ((org-log-into-drawer t))
+		(mf-case "user-drawer" "user.org"
+			(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-todo "DONE"))))
+	(mf-case "user-leave-waiting" "user.org"
+		(lambda () (mf-goto-heading "** WAITING Electrician quote") (org-todo "TODO")))
+	(mf-case "user-unschedule" "user.org"
+		(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-schedule '(4))))
+	(mf-case "user-undeadline" "user.org"
+		(lambda () (mf-goto-heading "** TODO Call the vendor") (org-deadline '(4))))
+	;; Two commands, each storing its note ere the next: a date, then a state.
+	(mf-case "user-state-and-date" "user.org"
+		(lambda ()
+			(mf-goto-heading "** NEXT Order the fan motor")
+			(org-schedule nil "2026-11-30")
+			(run-hooks 'post-command-hook)
+			(org-todo "DONE")))
+	(mf-case "user-repeat" "user.org"
+		(lambda () (mf-goto-heading "** NEXT Weekly oil check") (org-todo "DONE")))
+	(mf-case "user-empty-note" "user.org"
+		(lambda ()
+			(mf-goto-heading "** TODO Pick up the motor")
+			(org-todo "WAITING")
+			(run-hooks 'post-command-hook)
+			(mf-note "")))
+	;; A file whose first line is a heading: outline-next-heading passes over it.
+	(mf-case "refile-first-top-heading" "memos.org"
+		(lambda ()
+			(mf-goto-heading "** Frick rep contact")
+			(org-refile nil nil (list "top" (buffer-file-name) nil nil))))
+	(with-temp-buffer
+		(insert "# Written by tools/make-fixtures.el under the user's settings: file, heading line index, category, tags, outline path.\n")
+		(dolist (row (mf-inheritance-rows "user.org")) (insert row "\n"))
+		(let ((coding-system-for-write 'utf-8-unix))
+			(write-region nil nil (expand-file-name "inheritance-user.txt" mf-dir) nil 'silent))))
+
+;;; Log settings a file sets for itself, and org-log-done 'note on a repeating task.
+
+(mf-case "startup-drawer" "startup.org"
+	(lambda () (mf-goto-heading "* TODO Fix the door") (org-todo "DONE")))
+(let ((org-log-done 'note))
+	(mf-case "repeat-closing-note" "repeat.org"
+		(lambda ()
+			(mf-goto "a1c4e7f0-2b5d-4893-b6e9-c2f5a8d1b4e7")
+			(org-todo "DONE")
+			(run-hooks 'post-command-hook)
+			(mf-note "Checked."))))
+
+;;; Agenda: the dates of date ranges and diary sexps.
+
+(defconst mf-agenda-texts
+	'((:timestamp "<%%(diary-float t 4 2)>") (:timestamp "<%%(diary-float '(1 4 7 10) 1 -1)>")
+		(:timestamp "<%%(diary-float 11 4 4)>") (:timestamp "<%%(diary-float t 1 1 15)>")
+		(:timestamp "<%%(diary-anniversary 2 29 2020)>") (:timestamp "<%%(diary-anniversary 12 25)>")
+		(:timestamp "<%%(diary-block 11 28 2026 12 2 2026)>") (:timestamp "<%%(diary-cyclic 10 11 20 2026)>")
+		(:timestamp "<%%(diary-date 12 '(1 15) t)>") (:timestamp "<%%(diary-date t 13 2027)>")
+		(:timestamp "<2026-11-30 Mon>--<2026-12-03 Thu>") (:timestamp "<2026-12-31 Thu 22:00>--<2027-01-01 Fri 02:00>")
+		;; Stamps in a property drawer and another drawer count; in a comment line, a src block, or a
+		;; fixed-width line they do not; in a quote block they do.
+		(:timestamp ":PROPERTIES:\n:WHEN: <2026-12-07 Mon>\n:END:") (:timestamp ":LOGBOOK:\n- Note taken on <2026-12-08 Tue>\n:END:")
+		(:timestamp "# <2026-12-09 Wed> commented out") (:timestamp "#+BEGIN_SRC sh\necho <2026-12-10 Thu>\n#+END_SRC")
+		(:timestamp "#+BEGIN_QUOTE\nSee <2026-12-11 Fri>.\n#+END_QUOTE") (:timestamp ": <2026-12-12 Sat> fixed width"))
+	"The kind of agenda entry and the text of each row.")
+
+(defconst mf-agenda-from (calendar-absolute-from-gregorian '(11 1 2026))
+	"The first day of the agenda window: 2026-11-01.")
+
+(defconst mf-agenda-days 900
+	"The day count of the agenda window.")
+
+(with-temp-buffer
+	(insert "# Written by tools/make-fixtures.el: text (line breaks as \\n), then the agenda dates from 2026-11-01 for 900 days.\n")
+	(dolist (row mf-agenda-texts)
+		(let ((file (make-temp-file "mf-agenda" nil ".org" (concat "* E\n" (cadr row) "\n")))
+					dates)
+			(unwind-protect
+					(mf-with-fixed-clock
+						(dotimes (i mf-agenda-days)
+							(let ((date (calendar-gregorian-from-absolute (+ mf-agenda-from i))))
+								(when (org-agenda-get-day-entries file date (car row))
+									(push (format "%04d-%02d-%02d" (nth 2 date) (nth 0 date) (nth 1 date)) dates)))))
+				(let ((buf (find-buffer-visiting file)))
+					(when buf (with-current-buffer buf (set-buffer-modified-p nil)) (kill-buffer buf)))
+				(delete-file file))
+			(insert (replace-regexp-in-string "\n" "\\\\n" (cadr row)) "\t" (mapconcat #'identity (nreverse dates) " ") "\n")))
+	(let ((coding-system-for-write 'utf-8-unix))
+		(write-region nil nil (expand-file-name "agenda.txt" mf-dir) nil 'silent)))
 
 ;;; Repeats: the dates on which the agenda shows each timestamp.
 
