@@ -1,13 +1,14 @@
 # org-palm: the plan from phase 2 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 & 1b are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor. CI (`gradle :org-core:test`) is green at the end of 1b.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 & 1b are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor. CI (`gradle :org-core:test`) ran green on the 1b push of 2026-11-24; the later 1b changes (one test group under the user's settings, & form text written as typed) await their first CI run.
 
 ## Ground rules for every phase
 
-* **Interoperability w/ Emacs comes first.** The app reads & writes a file as Org would, under the user's settings. Where Emacs & `DESIGN.md` differ, the code follows Emacs, & `DESIGN.md` is corrected in the same change. The app invents no structure, escape, or behavior that Org lacks.
+* **Build only what the user asks for.** Each rule, field, check, & screen traces to a request or an approval of the user's; any other idea goes to the user in one line first.
+* **Interoperability w/ Emacs comes first.** The app reads & writes a file as Org would, under the user's settings. Where Emacs & `DESIGN.md` differ, the code follows Emacs, & `DESIGN.md` is corrected in the same change. The app invents no structure or behavior that Org lacks; form text goes into the file as typed, & Org reads it as it would read the same text typed in Emacs.
 * **The settings come from the user's Emacs init**, `~/.emacs.d/init.el` (the Org settings sit near its lines 185 to 265). `OrgSettings.STARTING` & the settings block atop `tools/make-fixtures.el` (under which every case runs) mirror it, & the table in `DESIGN.md` section 3 ("Emacs settings") lists the values. Ere each phase, reread the Org settings of `init.el`; a changed value changes all three in one pass. (On 2026-11-24 the capture templates gained `:prepend t`, which set the capture position to first.)
 * **Sync is git in Termux:** a pull, a string of edits, a push. The app writes no `:ID:` & keeps no state that a sync could break.
-* **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command, & a test that compares bytes. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
+* **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
 
