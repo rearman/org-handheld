@@ -4,10 +4,12 @@ import com.rearman.orgpalm.org.Entry
 import com.rearman.orgpalm.org.OrgFile
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 // One line of the agenda: the entry, the time at which it shows on its day (none for an untimed one or
-// in the todo list), & its priority's value, where a smaller value ranks higher.
-data class AgendaRow(val entry: Entry, val time: LocalTime?, val priority: Int)
+// in the todo list), its priority's value, where a smaller value ranks higher, & Org's leaders
+// ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:").
+data class AgendaRow(val entry: Entry, val time: LocalTime?, val priority: Int, val leaders: List<String> = emptyList())
 
 data class AgendaDay(val date: LocalDate, val rows: List<AgendaRow>)
 
@@ -25,9 +27,12 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 			val byDate = (0 until SPAN).associate { today.plusDays(it) to ArrayList<AgendaRow>() }
 			val todos = ArrayList<AgendaRow>()
 			for (file in files) {
+				val warningDays = file.settings.deadlineWarningDays
 				for (e in file.entries) {
 					val priority = priority(e, file)
-					for (d in e.agendaDates(today, last)) byDate[d]?.add(AgendaRow(e, timeOn(e, d), priority))
+					for (d in e.agendaDates(today, last, today, warningDays)) {
+						byDate[d]?.add(AgendaRow(e, timeOn(e, d), priority, leaders(e, d, today, warningDays)))
+					}
 					if (e.inTodoList) todos.add(AgendaRow(e, null, priority))
 				}
 			}
@@ -38,8 +43,33 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 			)
 		}
 
+		// Org's leaders for an entry on [d], w/o their padding (org-agenda-scheduled-leaders &
+		// org-agenda-deadline-leaders): on today, "Sched.Nx:" for a missed SCHEDULED date, "N d. ago:"
+		// for a missed DEADLINE, & "In N d.:" for a deadline within its warning days, for an entry not
+		// done; on the date of a stamp or a repeat, "Scheduled:" & "Deadline:". Org shows the scheduled &
+		// the deadline item as two lines; here one row carries both leaders.
+		private fun leaders(e: Entry, d: LocalDate, today: LocalDate, warningDays: Int): List<String> {
+			val due = d == today && !e.done
+			val out = ArrayList<String>()
+			e.scheduled?.let {
+				when {
+					due && it.pastDue(today, scheduled = true) -> out.add("Sched.${ChronoUnit.DAYS.between(it.date, today)}x:")
+					it.planningDates(d, d, scheduled = true).isNotEmpty() -> out.add("Scheduled:")
+				}
+			}
+			e.deadline?.let {
+				when {
+					due && it.pastDue(today, scheduled = false) -> out.add("${ChronoUnit.DAYS.between(it.date, today)} d. ago:")
+					due && it.dueSoon(today, warningDays) -> out.add("In ${ChronoUnit.DAYS.between(today, it.date)} d.:")
+					it.planningDates(d, d, scheduled = false).isNotEmpty() -> out.add("Deadline:")
+				}
+			}
+			return out
+		}
+
 		// The start time of the stamp that puts [e] on [d]: its SCHEDULED, its DEADLINE, or an active
-		// stamp of its text, in that order. A range or a sexp gives no time.
+		// stamp of its text, in that order. A range or a sexp gives no time, nor does a missed or coming
+		// date shown on today, as in Org.
 		private fun timeOn(e: Entry, d: LocalDate): LocalTime? {
 			e.scheduled?.takeIf { it.planningDates(d, d, scheduled = true).isNotEmpty() }?.start?.let { return it }
 			e.deadline?.takeIf { it.planningDates(d, d, scheduled = false).isNotEmpty() }?.start?.let { return it }

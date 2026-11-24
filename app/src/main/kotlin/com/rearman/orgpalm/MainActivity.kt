@@ -156,7 +156,7 @@ private fun Header(text: String) {
 	}
 }
 
-// Time, state, priority, title, tags (own, then inherited), & category. A tap does naught yet.
+// Time, leaders, state, priority, title, tags (own, then inherited), & category. A tap does naught yet.
 @Composable
 private fun AgendaLine(row: AgendaRow) {
 	val e = row.entry
@@ -164,6 +164,7 @@ private fun AgendaLine(row: AgendaRow) {
 	Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
 		Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
 			row.time?.let { Text(TIME.format(it), color = muted) }
+			for (leader in row.leaders) Text(leader, color = MaterialTheme.colorScheme.error)
 			e.state?.let { Text(it, fontWeight = FontWeight.Bold, color = if (e.done) muted else MaterialTheme.colorScheme.tertiary) }
 			e.priority?.let { Text("[#$it]", color = MaterialTheme.colorScheme.secondary) }
 			Text(e.title, Modifier.weight(1f))

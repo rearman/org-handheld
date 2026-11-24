@@ -10,7 +10,9 @@
 ;; repeats.txt, the dates on which Org's agenda shows each repeating
 ;; timestamp of a list, and inheritance.txt, the category, the tags
 ;; (w/ inheritance), and the outline path that Org gives each heading of
-;; a few inputs, and agenda.txt, the dates of date ranges and diary sexps.
+;; a few inputs, and agenda.txt, the dates of date ranges and diary sexps,
+;; and due.txt, the days on which a missed SCHEDULED or DEADLINE item, or
+;; a deadline ahead, shows.
 ;; The Kotlin tests compare org-core against all of them.
 ;;
 ;; Every case runs under the user's settings; a case that tests another
@@ -49,6 +51,7 @@
 	org-reverse-note-order t
 	org-enforce-todo-dependencies t
 	org-enforce-todo-checkbox-dependencies t
+	org-deadline-warning-days 14
 	org-auto-align-tags t
 	org-adapt-indentation nil
 	org-closed-keep-when-no-todo nil
@@ -550,5 +553,42 @@ NAME-source.expected.org and NAME-target.expected.org."
 							(mapconcat #'identity (mf-repeat-dates kind ts from days) " ") "\n")))
 	(let ((coding-system-for-write 'utf-8-unix))
 		(write-region nil nil (expand-file-name "repeats.txt" mf-dir) nil 'silent)))
+
+;;; Due: a missed SCHEDULED or DEADLINE item shows on today until it is done, and a deadline
+;;; warns on today ahead of its date.
+
+(defconst mf-due
+	'("* TODO E\nSCHEDULED: <2026-11-17 Tue>" "* DONE E\nSCHEDULED: <2026-11-17 Tue>"
+		"* E\nSCHEDULED: <2026-11-17 Tue>" "* TODO E\nSCHEDULED: [2026-11-17 Tue]"
+		"* TODO E\nDEADLINE: <2026-11-10 Tue>" "* BELAYED E\nDEADLINE: <2026-11-10 Tue>"
+		"* TODO E\nSCHEDULED: <2026-11-17 Tue 09:00 +1w>" "* TODO E\nDEADLINE: <2026-11-20 Fri +1m>"
+		"* TODO E\nSCHEDULED: <2026-11-17 Tue> DEADLINE: <2026-11-19 Thu>"
+		;; A delay hides the item until it has run.
+		"* TODO E\nSCHEDULED: <2026-11-20 Fri -5d>" "* TODO E\nSCHEDULED: <2026-11-20 Fri -2d>"
+		"* TODO E\nSCHEDULED: <2026-11-10 Tue -1w>" "* TODO E\nSCHEDULED: <2026-11-20 Fri -1w>"
+		;; A deadline warns on today from org-deadline-warning-days ahead, or from its own cookie.
+		"* TODO E\nDEADLINE: <2026-11-26 Thu>" "* DONE E\nDEADLINE: <2026-11-26 Thu>"
+		"* TODO E\nDEADLINE: <2026-12-07 Mon>" "* TODO E\nDEADLINE: <2026-12-08 Tue>"
+		"* TODO E\nDEADLINE: <2026-11-30 Mon +1w>" "* TODO E\nDEADLINE: <2026-11-25 Wed -3d>"
+		"* TODO E\nDEADLINE: <2026-12-03 Thu -3d>")
+	"The text of each entry.")
+
+(with-temp-buffer
+	(insert "# Written by tools/make-fixtures.el: entry (line breaks as \\n), then its SCHEDULED and DEADLINE dates from today, 2026-11-23, for 7 days.\n")
+	(dolist (text mf-due)
+		(let ((file (make-temp-file "mf-due" nil ".org" (concat text "\n")))
+					dates)
+			(unwind-protect
+					(mf-with-fixed-clock
+						(dotimes (i 7)
+							(let ((date (calendar-gregorian-from-absolute (+ (time-to-days mf-now) i))))
+								(when (org-agenda-get-day-entries file date :deadline :scheduled)
+									(push (format "%04d-%02d-%02d" (nth 2 date) (nth 0 date) (nth 1 date)) dates)))))
+				(let ((buf (find-buffer-visiting file)))
+					(when buf (with-current-buffer buf (set-buffer-modified-p nil)) (kill-buffer buf)))
+				(delete-file file))
+			(insert (replace-regexp-in-string "\n" "\\\\n" text) "\t" (mapconcat #'identity (nreverse dates) " ") "\n")))
+	(let ((coding-system-for-write 'utf-8-unix))
+		(write-region nil nil (expand-file-name "due.txt" mf-dir) nil 'silent)))
 
 ;;; make-fixtures.el ends here

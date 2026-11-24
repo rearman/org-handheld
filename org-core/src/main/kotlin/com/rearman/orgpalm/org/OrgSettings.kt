@@ -24,7 +24,8 @@ data class KeywordLog(val enter: LogMode, val leave: LogMode)
 // them there, at least one space after the title. [logIntoDrawer] names the drawer of
 // org-log-into-drawer, null for none. The priority values are Org's: a number 0 to 64, or the code of a
 // letter A to Z (org-priority-highest, org-priority-lowest, org-priority-default); a file's first
-// #+PRIORITIES: line wins (Priorities.of).
+// #+PRIORITIES: line wins (Priorities.of). [deadlineWarningDays] is org-deadline-warning-days, the days
+// ahead of a deadline from which the agenda warns of it on today.
 data class OrgSettings(
 	val todoKeywords: List<TodoSequence> = listOf(TodoSequence.parse("TODO DONE")),
 	val tagsColumn: Int = -77,
@@ -42,6 +43,7 @@ data class OrgSettings(
 	val capturePosition: Position = Position.LAST,
 	val enforceTodoDependencies: Boolean = false,
 	val enforceCheckboxDependencies: Boolean = false,
+	val deadlineWarningDays: Int = 14,
 ) {
 	// The priority range of these settings.
 	val priorities: Priorities get() = Priorities(priorityHighest, priorityLowest, priorityDefault)
@@ -95,6 +97,7 @@ data class OrgSettings(
 			capturePosition = Position.FIRST,
 			enforceTodoDependencies = true,
 			enforceCheckboxDependencies = true,
+			deadlineWarningDays = 14,
 		)
 	}
 }

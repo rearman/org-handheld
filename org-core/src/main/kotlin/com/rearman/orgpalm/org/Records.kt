@@ -64,10 +64,13 @@ data class Entry(
 
 	// The dates from [from] to [to] on which Org's agenda shows the entry: its SCHEDULED and DEADLINE
 	// stamps, and the active stamps, the ranges (every day of each), and the diary sexps of its own text.
-	// None under a COMMENT or :ARCHIVE: heading.
-	fun agendaDates(from: LocalDate, to: LocalDate): SortedSet<LocalDate> {
+	// None under a COMMENT or :ARCHIVE: heading. W/ [today] in the window, an entry not done shows on
+	// today too when its SCHEDULED or DEADLINE date was missed (Timestamp.pastDue) or its DEADLINE falls
+	// within [warningDays] (org-deadline-warning-days) or its own cookie (Timestamp.dueSoon).
+	fun agendaDates(from: LocalDate, to: LocalDate, today: LocalDate? = null, warningDays: Int = 0): SortedSet<LocalDate> {
 		val out = TreeSet<LocalDate>()
 		if (!inAgenda) return out
+		if (today != null && !done && !today.isBefore(from) && !today.isAfter(to) && dueToday(today, warningDays)) out.add(today)
 		scheduled?.let { out.addAll(it.planningDates(from, to, scheduled = true)) }
 		deadline?.let { out.addAll(it.planningDates(from, to, scheduled = false)) }
 		for (ts in activeStamps) out.addAll(ts.occurrences(from, to))
@@ -82,6 +85,10 @@ data class Entry(
 		for (s in sexps) out.addAll(s.dates(from, to))
 		return out
 	}
+
+	private fun dueToday(today: LocalDate, warningDays: Int): Boolean =
+		scheduled?.pastDue(today, scheduled = true) == true ||
+			deadline?.let { it.pastDue(today, scheduled = false) || it.dueSoon(today, warningDays) } == true
 
 	// Every open TODO entry, dated or not, outside a COMMENT or :ARCHIVE: subtree.
 	val inTodoList: Boolean get() = open && inAgenda

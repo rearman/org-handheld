@@ -93,6 +93,7 @@ A file carries few of the settings that govern how Org reads & writes it; the re
 | `org-enforce-todo-dependencies`               | t                                                       |
 | `org-enforce-todo-checkbox-dependencies`      | t                                                       |
 | `org-priority-highest`, `-lowest`, `-default` | 1, 5, 5                                                 |
+| `org-deadline-warning-days`                   | 14 (Org's default; `init.el` leaves it unset)           |
 | `org-agenda-files` (subfolders per folder)    | off, as `~/org` reads flat                              |
 
 The fixtures run under the starting values above; a case that tests another value of one variable sets that variable alone.
@@ -119,7 +120,7 @@ Every heading, at any level & in any file, is an `Entry`, & every entry is edita
 
 **Inheritance** follows Org. Tags inherit as `org-use-tag-inheritance` `t` gives them: an entry's inherited tags are the file's `#+FILETAGS:` & the tags of its ancestors, in that order, w/o duplicates, less the tags of `org-tags-exclude-from-inheritance`. The category is `:CATEGORY:` of the entry or its nearest ancestor that has one, else the file's last `#+CATEGORY:` line, else the file name w/o `.org`, as `org-get-category` gives it.
 
-**Agenda inclusion** follows Org's agenda: an entry shows on a date through its `SCHEDULED:`, its `DEADLINE:`, & any active timestamp in its own text (heading or body, but not its children's). A date range (`<...>--<...>`) shows on every day from its start to its end. A diary sexp shows on the dates it gives, for the forms `diary-anniversary`, `diary-block`, `diary-cyclic`, `diary-date`, & `diary-float`; any other sexp shows on no date, as a sexp that Org cannot evaluate shows on none. Every open TODO entry shows in the todo list, dated or not. Entries under a `COMMENT` heading or a heading tagged `:ARCHIVE:` show nowhere in the agenda, as `org-agenda-skip-comment-trees` & `org-agenda-skip-archived-trees` give it.
+**Agenda inclusion** follows Org's agenda: an entry shows on a date through its `SCHEDULED:`, its `DEADLINE:`, & any active timestamp in its own text (heading or body, but not its children's). An entry not done whose `SCHEDULED:` or `DEADLINE:` date has passed also shows on today until it is done, as Org carries a missed item forward; a `SCHEDULED:` delay (`-2d`) holds it back until the delay has run. A `DEADLINE:` also shows on today from `org-deadline-warning-days` ahead of its date, or from its own cookie (`-3d`). A row that a `SCHEDULED:` or `DEADLINE:` date puts on a day carries Org's leader: `Scheduled:` or `Deadline:` on that date, & on today `Sched.6x:`, `3 d. ago:`, or `In 5 d.:`. A date range (`<...>--<...>`) shows on every day from its start to its end. A diary sexp shows on the dates it gives, for the forms `diary-anniversary`, `diary-block`, `diary-cyclic`, `diary-date`, & `diary-float`; any other sexp shows on no date, as a sexp that Org cannot evaluate shows on none. Every open TODO entry shows in the todo list, dated or not. Entries under a `COMMENT` heading or a heading tagged `:ARCHIVE:` show nowhere in the agenda, as `org-agenda-skip-comment-trees` & `org-agenda-skip-archived-trees` give it.
 
 Three layouts serve as examples of files the app reads well; none is required.
 

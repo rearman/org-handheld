@@ -87,9 +87,8 @@ data class Timestamp(
 
 	// The dates from [from] to [to] on which Org's agenda shows this timestamp on a SCHEDULED or a
 	// DEADLINE line, for dates after today. Here the repeater counts in either order w/ the warning. A
-	// delay on a SCHEDULED line ("-2d") hides the first date. Limits: the display on today (overdue
-	// items, a deadline's warning period, the end of a delay) is not modeled; org-deadline-warning-days
-	// counts as 0.
+	// delay on a SCHEDULED line ("-2d") hides the first date. A missed item on today is pastDue's, & a
+	// deadline's warning on today is dueSoon's.
 	fun planningDates(from: LocalDate, to: LocalDate, scheduled: Boolean): List<LocalDate> {
 		if (!active || to.isBefore(from)) return emptyList()
 		val r = repeater
@@ -99,6 +98,44 @@ data class Timestamp(
 			repeatDates(r, from, to)
 		}
 		return if (scheduled && warning != null) dates.filter { it != date } else dates
+	}
+
+	// Whether Org's agenda shows this SCHEDULED or DEADLINE stamp on [today] as a missed item: an active
+	// stamp dated before today, on a SCHEDULED line once its delay ("-2d") has run, as
+	// org-agenda-get-scheduled & org-agenda-get-deadlines show it until the entry is done. The date is
+	// the one written, not its last repeat (org-agenda-prefer-last-repeat nil). Limit:
+	// org-scheduled-past-days & org-deadline-past-days (10000 days) are not read.
+	fun pastDue(today: LocalDate, scheduled: Boolean): Boolean {
+		if (!active || !date.isBefore(today)) return false
+		return !scheduled || ChronoUnit.DAYS.between(date, today) >= delayDays()
+	}
+
+	// Whether Org's agenda warns of this DEADLINE stamp on [today]: an active stamp dated after today by
+	// no more than its warning days, which org-get-wdays gives as the stamp's own cookie ("-3d"), else
+	// [settingDays] (org-deadline-warning-days); a setting of zero or less wins as its absolute value.
+	// Limit: org-agenda-skip-deadline-prewarning-if-scheduled (nil) is not read.
+	fun dueSoon(today: LocalDate, settingDays: Int): Boolean {
+		if (!active || !date.isAfter(today)) return false
+		val days = when {
+			settingDays <= 0 -> -settingDays.toLong()
+			warning != null -> delayDays()
+			else -> settingDays.toLong()
+		}
+		return ChronoUnit.DAYS.between(today, date) <= days
+	}
+
+	// The days of the warning or delay cookie, as org-get-wdays counts them: a month 30.4 days, a year
+	// 365.25, an hour 1/24, rounded down.
+	private fun delayDays(): Long {
+		val m = warning?.let { DELAY.find(it) } ?: return 0
+		val factor = when (m.groupValues[2]) {
+			"w" -> 7.0
+			"m" -> 30.4
+			"y" -> 365.25
+			"h" -> 0.041667
+			else -> 1.0
+		}
+		return Math.floor(m.groupValues[1].toLong() * factor).toLong()
 	}
 
 	// The repeats in [from, to]. A month or year repeat adds whole months to the first of the start
@@ -174,6 +211,7 @@ data class Timestamp(
 		private val SHAPE = Regex("""([<\[])(\d{4})-(\d{2})-(\d{2})([^<>\[\]\n]*?)[ \t]*([>\]])""")
 		private val TIME = Regex("""(\d{1,2}):(\d{2})(?:-(\d{1,2}):(\d{2}))?""")
 		private val WARNING = Regex("""--?\d+[hdwmy]""")
+		private val DELAY = Regex("""(\d+)([hdwmy])""")
 		private val DAY_NAME = Regex("""\p{L}+\.?""")
 
 		// An active timestamp, or what looks like one, anywhere in a line.

@@ -74,6 +74,7 @@ object SettingsCodec {
 	private val CAPTURE_POSITION = stringPreferencesKey("capture_position")
 	private val ENFORCE_TODO = booleanPreferencesKey("enforce_todo_dependencies")
 	private val ENFORCE_CHECKBOX = booleanPreferencesKey("enforce_checkbox_dependencies")
+	private val DEADLINE_WARNING_DAYS = intPreferencesKey("deadline_warning_days")
 
 	fun read(p: Preferences): OrgSettings {
 		val s = OrgSettings.STARTING
@@ -94,6 +95,7 @@ object SettingsCodec {
 			capturePosition = p[CAPTURE_POSITION]?.let { Position.valueOf(it) } ?: s.capturePosition,
 			enforceTodoDependencies = p[ENFORCE_TODO] ?: s.enforceTodoDependencies,
 			enforceCheckboxDependencies = p[ENFORCE_CHECKBOX] ?: s.enforceCheckboxDependencies,
+			deadlineWarningDays = p[DEADLINE_WARNING_DAYS] ?: s.deadlineWarningDays,
 		)
 	}
 
@@ -114,6 +116,7 @@ object SettingsCodec {
 		p[CAPTURE_POSITION] = s.capturePosition.name
 		p[ENFORCE_TODO] = s.enforceTodoDependencies
 		p[ENFORCE_CHECKBOX] = s.enforceCheckboxDependencies
+		p[DEADLINE_WARNING_DAYS] = s.deadlineWarningDays
 	}
 
 	// The sequences as the lines of a file would set them, one #+TODO: or #+TYP_TODO: line each, w/ the

@@ -248,6 +248,21 @@ class RecordsTest {
 		}
 	}
 
+	// A missed SCHEDULED or DEADLINE item shows on today until it is done, keyword or none, once its
+	// delay has run, & a deadline shows on today from its warning days ahead, the setting or its own
+	// cookie, as due.txt records Org's agenda for the week from the fixed today.
+	@Test
+	fun dueItemsShowOnTodayAsInOrg() {
+		val rows = Fixtures.text("due.txt").lines().drop(1).filter { it.isNotEmpty() }
+		assertEquals(20, rows.size)
+		val today = LocalDate.of(2026, 11, 23)
+		for (row in rows) {
+			val (text, dates) = row.split('\t')
+			val e = parse(text.replace("\\n", "\n") + "\n").entries.single()
+			assertEquals(row, dates, e.agendaDates(today, today.plusDays(6), today, OrgSettings.STARTING.deadlineWarningDays).joinToString(" "))
+		}
+	}
+
 	// A sexp the app does not model shows on no date, as a bad sexp in Org; a COMMENT or :ARCHIVE:
 	// subtree shows nowhere in the agenda.
 	@Test
