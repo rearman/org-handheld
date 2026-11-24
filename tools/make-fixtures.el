@@ -10,13 +10,12 @@
 ;; repeats.txt, the dates on which Org's agenda shows each repeating
 ;; timestamp of a list, and inheritance.txt, the category, the tags
 ;; (w/ inheritance), and the outline path that Org gives each heading of
-;; a few inputs (inheritance-user.txt under the user's settings), and
-;; agenda.txt, the dates of date ranges and diary sexps. The Kotlin tests
-;; compare org-core against all of them.
+;; a few inputs, and agenda.txt, the dates of date ranges and diary sexps.
+;; The Kotlin tests compare org-core against all of them.
 ;;
-;; The cases run under Org's stock settings, save org-log-done 'time,
-;; and the user-* cases under the user's settings (`mf-user', as init.el
-;; sets them). The clock, the locale, and the Org settings are fixed, and each file
+;; Every case runs under the user's settings; a case that tests another
+;; value of one variable let-binds that variable alone. The clock, the
+;; locale, and the Org settings are fixed, and each file
 ;; keeps the line endings it was read with, so a second run gives no
 ;; diff.
 
@@ -31,14 +30,26 @@
 (defconst mf-now (encode-time (list 0 30 14 23 11 2026 nil -1 nil))
 	"The fixed clock: 2026-11-23 14:30 local time.")
 
-;; Org's defaults where the design names them, and English day names. No
+;; The user's settings (DESIGN.md section 3, Emacs settings), as init.el sets
+;; them; a case that tests another value let-binds that variable alone.
+;; Then Org's defaults where the design names them, and English day names. No
 ;; refile bookmark, so that a run leaves the user's bookmark file alone.
-(setq org-tags-column -77
-	org-auto-align-tags t
+(setq org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "BELAYED(b@)"))
+	org-tags-column 0
+	org-priority-highest 1
+	org-priority-lowest 5
+	org-priority-default 5
+	org-tags-exclude-from-inheritance '("undertaking")
 	org-log-done 'time
-	org-log-into-drawer nil
 	org-log-repeat 'time
-	org-todo-log-states nil
+	org-log-reschedule 'time
+	org-log-redeadline 'time
+	org-log-into-drawer nil
+	org-log-state-notes-insert-after-drawers t
+	org-reverse-note-order t
+	org-enforce-todo-dependencies t
+	org-enforce-todo-checkbox-dependencies t
+	org-auto-align-tags t
 	org-adapt-indentation nil
 	org-closed-keep-when-no-todo nil
 	org-agenda-skip-timestamp-if-done nil
@@ -159,61 +170,111 @@ written ere the file is saved."
 		(goto-char beg)
 		(insert text)))
 
-;;; Field edits of todo.org.
+(defun mf-note (text)
+	"Finish the pending log note of Org's *Org Note* buffer w/ TEXT."
+	(with-current-buffer "*Org Note*"
+		(goto-char (point-max))
+		(insert text)
+		(org-store-log-note)))
 
-(mf-case "todo-done" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-todo "DONE")))
+;;; States: CLOSED, the state lines and notes of the keywords' marks, and dependencies.
+
+(mf-case "user-done" "user.org"
+	(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-todo "DONE")))
 (mf-case "todo-reopen" "todo.org"
 	(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-todo "TODO")))
-(mf-case "todo-next" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-todo "NEXT")))
+(mf-case "user-waiting-note" "user.org"
+	(lambda ()
+		(mf-goto-heading "** TODO Pick up the motor")
+		(org-todo "WAITING")
+		(run-hooks 'post-command-hook)
+		(mf-note "Waiting on the vendor quote.")))
+(mf-case "user-empty-note" "user.org"
+	(lambda ()
+		(mf-goto-heading "** TODO Pick up the motor")
+		(org-todo "WAITING")
+		(run-hooks 'post-command-hook)
+		(mf-note "")))
+(mf-case "user-leave-waiting" "user.org"
+	(lambda () (mf-goto-heading "** WAITING Electrician quote") (org-todo "TODO")))
+(let ((org-log-into-drawer t))
+	(mf-case "user-drawer" "user.org"
+		(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-todo "DONE"))))
+(mf-case "startup-drawer" "startup.org"
+	(lambda () (mf-goto-heading "* TODO Fix the door") (org-todo "DONE")))
+(mf-case "user-blocked" "user.org"
+	(lambda () (mf-goto-heading "* Shop renovation") (org-todo "DONE")))
+(mf-case "user-blocked-box" "user.org"
+	(lambda () (mf-goto-heading "** TODO Hardware store run") (org-todo "DONE")))
+(mf-case "crlf-done" "crlf.org"
+	(lambda () (mf-goto "b85d1e3a-6c07-4f29-9a4e-0d7f2c8b1e53") (org-todo "DONE")))
+
+;;; Planning: dates set and removed, w/ their log lines.
+
+(mf-case "user-reschedule" "user.org"
+	(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-schedule nil "2026-11-30")))
 (mf-case "deadline-set" "todo.org"
 	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-deadline nil "2026-11-27")))
-(mf-case "deadline-remove" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-deadline '(4))))
 (mf-case "schedule-add" "todo.org"
 	(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-schedule nil "2026-11-30")))
-(mf-case "schedule-remove" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-schedule '(4))))
-(mf-case "priority-set" "todo.org"
-	(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-priority ?A)))
-(mf-case "priority-remove" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-priority 'remove)))
-(mf-case "tags-set" "todo.org"
-	(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-set-tags '("work" "plc"))))
-(mf-case "tags-clear" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-set-tags nil)))
+(mf-case "schedule-beside-deadline" "children.org"
+	(lambda () (mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60") (org-schedule nil "2026-12-02")))
+(mf-case "user-unschedule" "user.org"
+	(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-schedule '(4))))
+(mf-case "user-undeadline" "user.org"
+	(lambda () (mf-goto-heading "** TODO Call the vendor") (org-deadline '(4))))
+;; Two commands, each storing its note ere the next: a date, then a state.
+(mf-case "user-state-and-date" "user.org"
+	(lambda ()
+		(mf-goto-heading "** NEXT Order the fan motor")
+		(org-schedule nil "2026-11-30")
+		(run-hooks 'post-command-hook)
+		(org-todo "DONE")))
+
+;;; The heading line: title, priority, and tags.
+
 (mf-case "title-edit" "todo.org"
 	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-edit-headline "Order VFD spares & fuses")))
-(mf-case "body-edit" "todo.org"
-	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (mf-set-body "Two ACS580s, frame R3.\nCheck stock first.")))
-(mf-case "task-append" "todo.org"
-	(lambda ()
-		(mf-goto "e1f6c9b3-2a85-4d07-8b4c-0d3e7a5f1b96")
-		(org-insert-subheading '(4))
-		(insert "Order spare contactors")
-		(org-todo "TODO")
-		(org-deadline nil "2026-12-01")))
-(mf-case "task-append-middle" "todo.org"
-	(lambda ()
-		(mf-goto "c3e8b1a0-5d47-4f2a-9e6b-1a7c0d3f8e52")
-		(org-insert-subheading '(4))
-		(insert "Check relief valves")))
-(mf-case "task-delete" "todo.org"
-	(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-cut-subtree)))
+(mf-case "user-priority-set" "user.org"
+	(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-priority 1)))
+(mf-case "user-priority-default" "user.org"
+	(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-priority 5)))
+(mf-case "priority-remove" "todo.org"
+	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-priority 'remove)))
+;; Tags that end at column 77, as Org's own org-tags-column puts them.
+(let ((org-tags-column -77))
+	(mf-case "tags-set" "todo.org"
+		(lambda () (mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04") (org-set-tags '("work" "plc")))))
+(mf-case "tags-clear" "todo.org"
+	(lambda () (mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37") (org-set-tags nil)))
 
-;;; Field edits of calendar.org.
+;;; Escapes: Org must read no tags and no keyword from an escaped title.
+
+(mf-case "escape-title" "todo.org"
+	(lambda ()
+		(mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04")
+		(org-edit-headline (concat "Check the list :hot:" (string #x200b)))
+		(unless (null (org-get-tags nil t)) (error "Escaped title reads as tags"))))
+(mf-case "escape-keyword" "todo.org"
+	(lambda ()
+		(mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04")
+		(org-priority 'remove)
+		(org-todo 'none)
+		(org-edit-headline (concat (string #x200b) "TODO list review"))
+		(unless (null (org-get-todo-state)) (error "Escaped title reads as a keyword"))))
+
+;;; Properties, the body, and event timestamps.
 
 (mf-case "warn-set" "calendar.org"
 	(lambda () (mf-goto "0b7e3a52-41d9-4f0e-a3c6-7d1e9b2f4c88") (org-entry-put nil "APPT_WARNTIME" "30")))
-(mf-case "warn-change" "calendar.org"
-	(lambda () (mf-goto "6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10") (org-entry-put nil "APPT_WARNTIME" "45")))
 (mf-case "warn-remove" "calendar.org"
 	(lambda () (mf-goto "6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10") (org-entry-delete nil "APPT_WARNTIME")))
-(mf-case "timestamp-change" "calendar.org"
-	(lambda ()
-		(mf-goto "6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10")
-		(mf-set-timestamps (lambda () (mf-ts 2026 11 24 10 0 "-11:30") (insert "\n")))))
+(mf-case "foreign-warn" "foreign.org"
+	(lambda () (mf-goto "e4b7a1c9-0d52-4e8f-b3a6-7c1d9f2e0a85") (org-entry-put nil "APPT_WARNTIME" "20")))
+(mf-case "drawer-remove" "children.org"
+	(lambda () (mf-goto "5b8c2e7f-9a14-4d63-b0e7-6f3a1c9d2e85") (org-entry-delete nil "ID")))
+(mf-case "logbook-body" "logbook.org"
+	(lambda () (mf-goto "6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58") (mf-set-body "Use the Fluke 754.\nZero at 0 psig.")))
 (mf-case "weekdays-add" "calendar.org"
 	(lambda ()
 		(mf-goto "6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10")
@@ -232,59 +293,11 @@ written ere the file is saved."
 		 (lambda ()
 			 (mf-ts 2026 11 23 7 0 "-08:00 +1w") (insert "\n")
 			 (mf-ts 2026 11 26 7 0 "-08:00 +1w") (insert "\n")))))
-(mf-case "event-tags" "calendar.org"
-	(lambda () (mf-goto "6f1d2c4e-8a1b-4c55-9e0a-2b7f1d9c3a10") (org-set-tags '("private"))))
-(mf-case "event-title" "calendar.org"
-	(lambda () (mf-goto "0b7e3a52-41d9-4f0e-a3c6-7d1e9b2f4c88") (org-edit-headline "Office closed for Thanksgiving")))
-(mf-case "event-append" "calendar.org"
-	(lambda ()
-		(goto-char (point-max))
-		(org-insert-heading-respect-content)
-		(insert "Ammonia leak drill")
-		(org-entry-put nil "APPT_WARNTIME" "30")
-		(mf-set-timestamps (lambda () (mf-ts 2026 12 3 13 30 "-14:30") (insert "\n")))))
-(mf-case "event-delete" "calendar.org"
-	(lambda () (mf-goto "0b7e3a52-41d9-4f0e-a3c6-7d1e9b2f4c88") (org-cut-subtree)))
-
-;;; Edge files.
-
-(mf-case "crlf-done" "crlf.org"
-	(lambda () (mf-goto "b85d1e3a-6c07-4f29-9a4e-0d7f2c8b1e53") (org-todo "DONE")))
-(mf-case "logbook-done" "logbook.org"
-	(lambda () (mf-goto "6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58") (org-todo "DONE")))
-(mf-case "logbook-body" "logbook.org"
-	(lambda () (mf-goto "6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58") (mf-set-body "Use the Fluke 754.\nZero at 0 psig.")))
-(mf-case "foreign-warn" "foreign.org"
-	(lambda () (mf-goto "e4b7a1c9-0d52-4e8f-b3a6-7c1d9f2e0a85") (org-entry-put nil "APPT_WARNTIME" "20")))
-(mf-case "children-delete" "children.org"
-	(lambda () (mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60") (org-cut-subtree)))
-(mf-case "children-title" "children.org"
-	(lambda () (mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60") (org-edit-headline "Rebuild compressor 3, RWF II")))
-(mf-case "memo-title" "memos.org"
-	(lambda () (mf-goto "a2d5f8c1-6e39-4b07-9c4a-3f1b7e0d2c65") (org-edit-headline "Frick rep, RWF II")))
-(mf-case "memo-append" "no-final-newline.org"
-	(lambda ()
-		(mf-goto "5d0a8c3f-7e21-4b94-a6d8-3c9f1e7b0a42")
-		(org-insert-subheading '(4))
-		(insert "Gate codes")))
-
-;;; Escapes: Org must read no tags and no keyword from an escaped title.
-
-(mf-case "escape-title" "todo.org"
-	(lambda ()
-		(mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04")
-		(org-edit-headline (concat "Check the list :hot:" (string #x200b)))
-		(unless (null (org-get-tags nil t)) (error "Escaped title reads as tags"))))
-(mf-case "escape-keyword" "todo.org"
-	(lambda ()
-		(mf-goto "7d0b4f2e-9c68-4a1d-b3e5-2f9a1c8d6e04")
-		(org-priority 'remove)
-		(org-todo 'none)
-		(org-edit-headline (concat (string #x200b) "TODO list review"))
-		(unless (null (org-get-todo-state)) (error "Escaped title reads as a keyword"))))
 
 ;;; Repeating tasks marked done: org-auto-repeat-maybe shifts the dates.
 
+(mf-case "user-repeat" "user.org"
+	(lambda () (mf-goto-heading "** NEXT Weekly oil check") (org-todo "DONE")))
 (mf-case "repeat-plus" "repeat.org"
 	(lambda () (mf-goto "a1c4e7f0-2b5d-4893-b6e9-c2f5a8d1b4e7") (org-todo "DONE")))
 (mf-case "repeat-dot" "repeat.org"
@@ -297,7 +310,6 @@ written ere the file is saved."
 	(lambda () (mf-goto "e5a8c1d4-6f91-4c37-bacd-a6d9e2b5f8c1") (org-todo "DONE")))
 (mf-case "repeat-warning" "repeat.org"
 	(lambda () (mf-goto "f6b9d2e5-7a02-4d48-8bde-b7eaf3c6a9d2") (org-todo "DONE")))
-
 (mf-case "repeat-delay" "repeat.org"
 	(lambda () (mf-goto "07c1e4a8-9b2f-4d63-a5e8-1c4f7b0d3e96") (org-todo "DONE")))
 (mf-case "repeat-to-unknown-state" "repeat.org"
@@ -314,20 +326,29 @@ written ere the file is saved."
 	(lambda () (mf-goto "4ad6f81c-3e50-4279-9d4f-6b8e0a2c4d5f") (org-todo "DONE")))
 (mf-case "repeat-typed" "repeat2.org"
 	(lambda () (mf-goto "5be70a2d-4f61-438a-8e50-7c9f1b3d5e6a") (org-todo "FINISHED")))
+(let ((org-log-done 'note))
+	(mf-case "repeat-closing-note" "repeat.org"
+		(lambda ()
+			(mf-goto "a1c4e7f0-2b5d-4893-b6e9-c2f5a8d1b4e7")
+			(org-todo "DONE")
+			(run-hooks 'post-command-hook)
+			(mf-note "Checked."))))
 
-;;; A planning keyword added beside the other one.
+;;; New entries. The user's capture templates carry :prepend t (first); the
+;;; capture position last, the end of the parent's subtree, is
+;;; org-insert-heading w/ respect-content, which no setting changes.
 
-(mf-case "schedule-beside-deadline" "children.org"
-	(lambda () (mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60") (org-schedule nil "2026-12-02")))
-(mf-case "deadline-beside-schedule" "logbook.org"
-	(lambda () (mf-goto "6a2f9e0b-4d71-4c53-b8e2-1f0c7a9d3e58") (org-deadline nil "2026-11-28")))
+(defun mf-capture-first (target)
+	"Capture \"* TODO Call the vendor\" w/ :prepend t into the current buffer's file under TARGET.
+TARGET is a heading's title, or nil for the top level of the file."
+	(let ((org-capture-templates
+				 `(("x" "x" entry
+						,(if target (list 'file+headline (buffer-file-name) target) (list 'file (buffer-file-name)))
+						"* TODO Call the vendor" :prepend t :immediate-finish t))))
+		(org-capture nil "x")))
 
-;;; The last property of a drawer deleted: org-entry-delete drops the drawer.
-
-(mf-case "drawer-remove" "children.org"
-	(lambda () (mf-goto "5b8c2e7f-9a14-4d63-b0e7-6f3a1c9d2e85") (org-entry-delete nil "ID")))
-
-;;; A BOM, mixed line endings, and an empty file.
+(mf-case "capture-first" "outline.org" (lambda () (mf-capture-first "Projects")))
+(mf-case "capture-first-top" "outline.org" (lambda () (mf-capture-first nil)))
 
 (defun mf-append-top (title)
 	"Insert a top-level heading TITLE after the last top-level subtree."
@@ -336,12 +357,32 @@ written ere the file is saved."
 	(org-insert-heading-respect-content)
 	(insert title))
 
-(mf-case "bom-title" "bom.org"
-	(lambda () (mf-goto "9e2c4f7a-6b03-4d18-a5e9-1c8f0b3d7a64") (org-edit-headline "Notes")))
+(mf-case "task-append" "todo.org"
+	(lambda ()
+		(mf-goto "e1f6c9b3-2a85-4d07-8b4c-0d3e7a5f1b96")
+		(org-insert-subheading '(4))
+		(insert "Order spare contactors")
+		(org-todo "TODO")
+		(org-deadline nil "2026-12-01")))
+(mf-case "task-append-middle" "todo.org"
+	(lambda ()
+		(mf-goto "c3e8b1a0-5d47-4f2a-9e6b-1a7c0d3f8e52")
+		(org-insert-subheading '(4))
+		(insert "Check relief valves")))
+(mf-case "event-append" "calendar.org"
+	(lambda ()
+		(goto-char (point-max))
+		(org-insert-heading-respect-content)
+		(insert "Ammonia leak drill")
+		(org-entry-put nil "APPT_WARNTIME" "30")
+		(mf-set-timestamps (lambda () (mf-ts 2026 12 3 13 30 "-14:30") (insert "\n")))))
+(mf-case "memo-append" "no-final-newline.org"
+	(lambda ()
+		(mf-goto "5d0a8c3f-7e21-4b94-a6d8-3c9f1e7b0a42")
+		(org-insert-subheading '(4))
+		(insert "Gate codes")))
 (mf-case "bom-append" "bom.org"
 	(lambda () (mf-append-top "Second")))
-(mf-case "mixed-warn" "mixed.org"
-	(lambda () (mf-goto "4a1f7c0e-2b96-4d38-8e5a-7c3d0f9b6e21") (org-entry-put nil "APPT_WARNTIME" "10")))
 (mf-case "mixed-append" "mixed.org"
 	(lambda () (mf-append-top "B")))
 (mf-case "empty-append" "empty.org"
@@ -349,41 +390,31 @@ written ere the file is saved."
 		(mf-append-top "First event")
 		(mf-set-timestamps (lambda () (mf-ts 2026 12 1) (insert "\n")))))
 
-;;; Refile: a task or a note moved under another heading of its file.
+;;; Delete and refile.
 
-(mf-case "task-move" "todo.org"
+(mf-case "children-delete" "children.org"
+	(lambda () (mf-goto "0f9c2a7e-3d58-4b16-a7c9-5e1b8d4f2a60") (org-cut-subtree)))
+(mf-case "user-refile" "user.org"
 	(lambda ()
-		(let ((pos (save-excursion (mf-goto "e1f6c9b3-2a85-4d07-8b4c-0d3e7a5f1b96") (point))))
-			(mf-goto "5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37")
-			(org-refile nil nil (list "Unfiled" (buffer-file-name) nil pos)))))
-(defun mf-refile (id target)
-	"Refile the heading ID under the heading TARGET (an ID) w/ `org-refile'."
-	(let ((pos (save-excursion (mf-goto target) (point))))
-		(mf-goto id)
-		(org-refile nil nil (list "target" (buffer-file-name) nil pos))))
-
-(mf-case "note-move-middle" "move.org"
-	(lambda () (mf-refile "a4f61cd8-3059-4eb7-a2ca-5d91bf7e306c" "71c3e9a5-0d26-4b84-9f17-2a6e8c4b0d39")))
-(mf-case "note-move-end" "move.org"
-	(lambda () (mf-refile "82d4fab6-1e37-4c95-80a8-3b7f9d5c1e4a" "93e50bc7-2f48-4da6-91b9-4c80ae6d2f5b")))
-
-;;; Any layout: edits at levels 1, 3, and 4 of a mixed file, and a refile.
-
-(mf-case "outline-tags-top" "outline.org"
-	(lambda () (mf-goto-heading "* Compressors") (org-set-tags '("mech" "shop"))))
-(mf-case "outline-done-deep" "outline.org"
-	(lambda () (mf-goto-heading "*** NEXT Order filters") (org-todo "DONE")))
-(mf-case "outline-insert-deep" "outline.org"
-	(lambda ()
-		(mf-goto-heading "*** TODO Submittal review")
-		(org-insert-subheading '(4))
-		(insert "Check breaker sizes")
-		(org-todo "TODO")))
-(mf-case "outline-refile" "outline.org"
-	(lambda ()
-		(let ((pos (save-excursion (mf-goto-heading "** Condenser retrofit") (point))))
-			(mf-goto-heading "** TODO Oil change on C3")
+		(let ((pos (save-excursion (mf-goto-heading "* Shop renovation") (point))))
+			(mf-goto-heading "** TODO Hardware store run")
 			(org-refile nil nil (list "target" (buffer-file-name) nil pos)))))
+(mf-case "user-refile-top" "user.org"
+	(lambda ()
+		(mf-goto-heading "** WAITING Electrician quote")
+		(org-refile nil nil (list "top" (buffer-file-name) nil nil))))
+;; A file whose first line is a heading: outline-next-heading passes over it.
+(mf-case "refile-first-top-heading" "memos.org"
+	(lambda ()
+		(mf-goto-heading "** Frick rep contact")
+		(org-refile nil nil (list "top" (buffer-file-name) nil nil))))
+;; The refile position last: the end of the target's subtree, a level deeper.
+(let ((org-reverse-note-order nil))
+	(mf-case "outline-refile" "outline.org"
+		(lambda ()
+			(let ((pos (save-excursion (mf-goto-heading "** Condenser retrofit") (point))))
+				(mf-goto-heading "** TODO Oil change on C3")
+				(org-refile nil nil (list "target" (buffer-file-name) nil pos))))))
 
 ;;; A refile to another file: both files change.
 
@@ -430,130 +461,10 @@ NAME-source.expected.org and NAME-target.expected.org."
 
 (with-temp-buffer
 	(insert "# Written by tools/make-fixtures.el: file, heading line index, category, tags, outline path.\n")
-	(dolist (input '("outline.org" "calendar.org" "todo.org" "memos.org"))
+	(dolist (input '("outline.org" "calendar.org" "todo.org" "memos.org" "user.org"))
 		(dolist (row (mf-inheritance-rows input)) (insert row "\n")))
 	(let ((coding-system-for-write 'utf-8-unix))
 		(write-region nil nil (expand-file-name "inheritance.txt" mf-dir) nil 'silent)))
-
-;;; Capture first: org-capture w/ :prepend t, under a heading and at the top level.
-
-(defun mf-capture-first (target)
-	"Capture \"* TODO Call the vendor\" w/ :prepend t into the current buffer's file under TARGET.
-TARGET is a heading's title, or nil for the top level of the file."
-	(let ((org-capture-templates
-				 `(("x" "x" entry
-						,(if target (list 'file+headline (buffer-file-name) target) (list 'file (buffer-file-name)))
-						"* TODO Call the vendor" :prepend t :immediate-finish t))))
-		(org-capture nil "x")))
-
-(mf-case "capture-first" "outline.org" (lambda () (mf-capture-first "Projects")))
-(mf-case "capture-first-top" "outline.org" (lambda () (mf-capture-first nil)))
-
-;;; The user's settings (DESIGN.md section 3, Emacs settings), as init.el sets them.
-
-(defmacro mf-user (&rest body)
-	"Run BODY under the user's Org settings.
-Their capture templates carry :prepend t, as `mf-capture-first' does."
-	`(let ((org-todo-keywords '((sequence "TODO(t)" "NEXT(n)" "WAITING(w@/!)" "|" "DONE(d!)" "BELAYED(b@)")))
-				 (org-tags-column 0)
-				 (org-priority-highest 1)
-				 (org-priority-lowest 5)
-				 (org-priority-default 5)
-				 (org-tags-exclude-from-inheritance '("undertaking"))
-				 (org-log-done 'time)
-				 (org-log-repeat 'time)
-				 (org-log-reschedule 'time)
-				 (org-log-redeadline 'time)
-				 (org-log-into-drawer nil)
-				 (org-log-state-notes-insert-after-drawers t)
-				 (org-reverse-note-order t)
-				 (org-enforce-todo-dependencies t)
-				 (org-enforce-todo-checkbox-dependencies t))
-		 ,@body))
-
-(defun mf-note (text)
-	"Finish the pending log note of Org's *Org Note* buffer w/ TEXT."
-	(with-current-buffer "*Org Note*"
-		(goto-char (point-max))
-		(insert text)
-		(org-store-log-note)))
-
-(mf-user
-	(mf-case "user-done" "user.org"
-		(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-todo "DONE")))
-	(mf-case "user-waiting-note" "user.org"
-		(lambda ()
-			(mf-goto-heading "** TODO Pick up the motor")
-			(org-todo "WAITING")
-			(run-hooks 'post-command-hook)
-			(mf-note "Waiting on the vendor quote.")))
-	(mf-case "user-reschedule" "user.org"
-		(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-schedule nil "2026-11-30")))
-	(mf-case "user-title" "user.org"
-		(lambda () (mf-goto-heading "** TODO Call the vendor") (org-edit-headline "Call the vendor about the gasket kit")))
-	(mf-case "user-refile" "user.org"
-		(lambda ()
-			(let ((pos (save-excursion (mf-goto-heading "* Shop renovation") (point))))
-				(mf-goto-heading "** TODO Hardware store run")
-				(org-refile nil nil (list "target" (buffer-file-name) nil pos)))))
-	(mf-case "user-refile-top" "user.org"
-		(lambda ()
-			(mf-goto-heading "** WAITING Electrician quote")
-			(org-refile nil nil (list "top" (buffer-file-name) nil nil))))
-	(mf-case "user-priority-set" "user.org"
-		(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-priority 1)))
-	(mf-case "user-priority-default" "user.org"
-		(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-priority 5)))
-	(mf-case "user-blocked" "user.org"
-		(lambda () (mf-goto-heading "* Shop renovation") (org-todo "DONE")))
-	(mf-case "user-blocked-box" "user.org"
-		(lambda () (mf-goto-heading "** TODO Hardware store run") (org-todo "DONE")))
-	(let ((org-log-into-drawer t))
-		(mf-case "user-drawer" "user.org"
-			(lambda () (mf-goto-heading "** TODO Pick up the motor") (org-todo "DONE"))))
-	(mf-case "user-leave-waiting" "user.org"
-		(lambda () (mf-goto-heading "** WAITING Electrician quote") (org-todo "TODO")))
-	(mf-case "user-unschedule" "user.org"
-		(lambda () (mf-goto-heading "** NEXT Order the fan motor") (org-schedule '(4))))
-	(mf-case "user-undeadline" "user.org"
-		(lambda () (mf-goto-heading "** TODO Call the vendor") (org-deadline '(4))))
-	;; Two commands, each storing its note ere the next: a date, then a state.
-	(mf-case "user-state-and-date" "user.org"
-		(lambda ()
-			(mf-goto-heading "** NEXT Order the fan motor")
-			(org-schedule nil "2026-11-30")
-			(run-hooks 'post-command-hook)
-			(org-todo "DONE")))
-	(mf-case "user-repeat" "user.org"
-		(lambda () (mf-goto-heading "** NEXT Weekly oil check") (org-todo "DONE")))
-	(mf-case "user-empty-note" "user.org"
-		(lambda ()
-			(mf-goto-heading "** TODO Pick up the motor")
-			(org-todo "WAITING")
-			(run-hooks 'post-command-hook)
-			(mf-note "")))
-	;; A file whose first line is a heading: outline-next-heading passes over it.
-	(mf-case "refile-first-top-heading" "memos.org"
-		(lambda ()
-			(mf-goto-heading "** Frick rep contact")
-			(org-refile nil nil (list "top" (buffer-file-name) nil nil))))
-	(with-temp-buffer
-		(insert "# Written by tools/make-fixtures.el under the user's settings: file, heading line index, category, tags, outline path.\n")
-		(dolist (row (mf-inheritance-rows "user.org")) (insert row "\n"))
-		(let ((coding-system-for-write 'utf-8-unix))
-			(write-region nil nil (expand-file-name "inheritance-user.txt" mf-dir) nil 'silent))))
-
-;;; Log settings a file sets for itself, and org-log-done 'note on a repeating task.
-
-(mf-case "startup-drawer" "startup.org"
-	(lambda () (mf-goto-heading "* TODO Fix the door") (org-todo "DONE")))
-(let ((org-log-done 'note))
-	(mf-case "repeat-closing-note" "repeat.org"
-		(lambda ()
-			(mf-goto "a1c4e7f0-2b5d-4893-b6e9-c2f5a8d1b4e7")
-			(org-todo "DONE")
-			(run-hooks 'post-command-hook)
-			(mf-note "Checked."))))
 
 ;;; Agenda: the dates of date ranges and diary sexps.
 

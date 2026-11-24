@@ -29,8 +29,10 @@ class AnchorTest {
 	// Emacs marked the task DONE (its heading line) or edited its body (its section).
 	@Test
 	fun changedHeadingIsAConflict() {
-		assertEquals(WriteResult.Conflict, writer.apply(Fixtures.text("todo-done.expected.org"), Edit.Update(vfd, retitle)))
-		assertEquals(WriteResult.Conflict, writer.apply(Fixtures.text("body-edit.expected.org"), Edit.Update(vfd, retitle)))
+		val done = read.replace("** TODO [#A] Order VFD", "** DONE [#A] Order VFD")
+		assertEquals(WriteResult.Conflict, writer.apply(done, Edit.Update(vfd, retitle)))
+		val edited = read.replace("Two ACS580s", "Three ACS580s")
+		assertEquals(WriteResult.Conflict, writer.apply(edited, Edit.Update(vfd, retitle)))
 	}
 
 	// The anchor holds the heading's own section, so a change to a child leaves it good.
@@ -44,8 +46,9 @@ class AnchorTest {
 
 	@Test
 	fun deletedHeadingIsAConflict() {
-		val ioList = Fixtures.anchor(read, Fixtures.IO_LIST)
-		assertEquals(WriteResult.Conflict, writer.apply(Fixtures.text("task-delete.expected.org"), Edit.Update(ioList, listOf(FieldChange.Priority("A")))))
+		val children = Fixtures.text("children.org")
+		val gaskets = Fixtures.anchor(children, Fixtures.ORDER_GASKETS)
+		assertEquals(WriteResult.Conflict, writer.apply(Fixtures.text("children-delete.expected.org"), Edit.Update(gaskets, listOf(FieldChange.Priority("1")))))
 	}
 
 	// A copy pasted after the heading leaves it at its own line, the target; a line added above as well

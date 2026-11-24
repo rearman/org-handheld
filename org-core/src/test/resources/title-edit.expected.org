@@ -5,7 +5,7 @@
 :ID:       c3e8b1a0-5d47-4f2a-9e6b-1a7c0d3f8e52
 :CATEGORY: Work
 :END:
-** TODO [#A] Order VFD spares & fuses                               :private:
+** TODO [#A] Order VFD spares & fuses :private:
 DEADLINE: <2026-11-25 Wed> SCHEDULED: <2026-11-23 Mon>
 :PROPERTIES:
 :ID:       5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37

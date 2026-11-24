@@ -77,8 +77,6 @@ data class OrgSettings(
 	companion object {
 		const val LOGBOOK = "LOGBOOK"
 
-		val STOCK = OrgSettings()
-
 		// The user's values when the app first starts (DESIGN.md section 3, Emacs settings).
 		val STARTING = OrgSettings(
 			todoKeywords = listOf(TodoSequence.parse("TODO(t) NEXT(n) WAITING(w@/!) | DONE(d!) BELAYED(b@)")),

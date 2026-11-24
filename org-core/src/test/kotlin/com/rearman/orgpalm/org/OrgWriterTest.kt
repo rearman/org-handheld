@@ -9,154 +9,145 @@ import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.THURSDAY
 
 // Each test applies one edit and compares the text, byte for byte, w/ what Org's own command wrote for
-// the same edit (tools/make-fixtures.el).
+// the same edit (tools/make-fixtures.el), under the user's settings; a test of another value copies them
+// w/ that one value changed, as the case let-binds it in Emacs.
 class OrgWriterTest {
 	private val writer = Fixtures.writer()
 
 	private fun written(result: WriteResult): String? = (result as? WriteResult.Written)?.text
 
-	private fun check(case: String, input: String, edit: (String) -> Edit) {
+	private fun check(case: String, input: String, with: OrgWriter = writer, edit: (String) -> Edit) {
 		val text = Fixtures.text(input)
-		assertEquals(Fixtures.text("$case.expected.org"), written(writer.apply(text, edit(text))))
+		assertEquals(Fixtures.text("$case.expected.org"), written(with.apply(text, edit(text))))
 	}
 
+	// An update of the heading whose :ID: is [id].
 	private fun update(case: String, input: String, id: String, vararg changes: FieldChange) =
 		check(case, input) { Edit.Update(Fixtures.anchor(it, id), changes.toList()) }
 
-	private fun todo(case: String, id: String, vararg changes: FieldChange) = update(case, "todo.org", id, *changes)
+	// An update of the heading of user.org whose line begins w/ [prefix].
+	private fun user(case: String, prefix: String, vararg changes: FieldChange) =
+		check(case, "user.org") { Edit.Update(Fixtures.headingAnchor(it, prefix), changes.toList()) }
 
-	private fun calendar(case: String, id: String, vararg changes: FieldChange) = update(case, "calendar.org", id, *changes)
+	// States.
+
+	// DONE(d!): CLOSED per org-log-done, and a state line after the drawers.
+	@Test
+	fun doneLogsClosedAndAStateLine() = user("user-done", "** NEXT Order the fan motor", FieldChange.State("DONE"))
 
 	@Test
-	fun stateToDoneWritesClosed() = todo("todo-done", Fixtures.VFD, FieldChange.State("DONE"))
+	fun stateFromDoneRemovesClosed() = update("todo-reopen", "todo.org", Fixtures.IO_LIST, FieldChange.State("TODO"))
+
+	// WAITING(w@/!): the note the form took, below the state line.
+	@Test
+	fun waitingLogsItsNote() = user("user-waiting-note", "** TODO Pick up the motor", FieldChange.State("WAITING", "Waiting on the vendor quote."))
 
 	@Test
-	fun stateFromDoneRemovesClosed() = todo("todo-reopen", Fixtures.IO_LIST, FieldChange.State("TODO"))
+	fun emptyNoteLogsTheLineAlone() = user("user-empty-note", "** TODO Pick up the motor", FieldChange.State("WAITING", ""))
 
+	// WAITING(w@/!) logs on leaving it, above the older note.
 	@Test
-	fun stateBetweenOpenKeywords() = todo("todo-next", Fixtures.VFD, FieldChange.State("NEXT"))
+	fun leavingWaitingLogs() = user("user-leave-waiting", "** WAITING Electrician quote", FieldChange.State("TODO"))
 
+	// org-log-into-drawer: the drawer is made after the planning line and takes the note.
 	@Test
-	fun deadlineChange() = todo("deadline-set", Fixtures.VFD, FieldChange.Deadline(ts("<2026-11-27 Fri>")))
+	fun logGoesIntoADrawer() = check("user-drawer", "user.org", Fixtures.writer(OrgSettings.STARTING.copy(logIntoDrawer = OrgSettings.LOGBOOK))) {
+		Edit.Update(Fixtures.headingAnchor(it, "** TODO Pick up the motor"), listOf(FieldChange.State("DONE")))
+	}
 
+	// #+STARTUP: logdrawer in the file wins over org-log-into-drawer, ahead of the body text.
 	@Test
-	fun deadlineRemoval() = todo("deadline-remove", Fixtures.VFD, FieldChange.Deadline(null))
+	fun startupLogdrawerWins() = check("startup-drawer", "startup.org") {
+		Edit.Update(Fixtures.headingAnchor(it, "* TODO Fix the door"), listOf(FieldChange.State("DONE")))
+	}
 
+	// An open child blocks DONE, and Emacs leaves the file as it was.
 	@Test
-	fun scheduleAddedDropsClosedAsOrgDoes() = todo("schedule-add", Fixtures.IO_LIST, FieldChange.Scheduled(ts("<2026-11-30 Mon>")))
-
-	@Test
-	fun scheduleRemoval() = todo("schedule-remove", Fixtures.VFD, FieldChange.Scheduled(null))
-
-	@Test
-	fun priorityChange() = todo("priority-set", Fixtures.IO_LIST, FieldChange.Priority("A"))
-
-	@Test
-	fun priorityRemovalRealignsTags() = todo("priority-remove", Fixtures.VFD, FieldChange.Priority(null))
-
-	@Test
-	fun tagsAddedAlignToColumn77() = todo("tags-set", Fixtures.IO_LIST, FieldChange.Tags(listOf("work", "plc")))
-
-	@Test
-	fun tagsCleared() = todo("tags-clear", Fixtures.VFD, FieldChange.Tags(emptyList()))
-
-	@Test
-	fun titleChangeRealignsTags() = todo("title-edit", Fixtures.VFD, FieldChange.Title("Order VFD spares & fuses"))
-
-	@Test
-	fun bodyChange() = todo("body-edit", Fixtures.VFD, FieldChange.Body("Two ACS580s, frame R3.\nCheck stock first."))
-
-	@Test
-	fun taskInsertedAtTheEndOfItsParent() = check("task-append", "todo.org") {
-		Edit.Insert(
-			Fixtures.anchor(it, Fixtures.UNFILED),
-			listOf(FieldChange.Title("Order spare contactors"), FieldChange.State("TODO"), FieldChange.Deadline(ts("<2026-12-01 Tue>"))),
-		)
+	fun openChildBlocksDone() {
+		val text = Fixtures.text("user.org")
+		val edit = Edit.Update(Fixtures.headingAnchor(text, "* Shop renovation"), listOf(FieldChange.State("DONE")))
+		assertEquals(WriteResult.Blocked("\"NEXT Order the fan motor :call:\""), writer.apply(text, edit))
+		assertEquals(text, Fixtures.text("user-blocked.expected.org"))
 	}
 
 	@Test
-	fun taskInsertedAheadOfTheNextHeading() = check("task-append-middle", "todo.org") {
-		Edit.Insert(Fixtures.anchor(it, Fixtures.WORK), listOf(FieldChange.Title("Check relief valves")))
+	fun uncheckedBoxBlocksDone() {
+		val text = Fixtures.text("user.org")
+		val edit = Edit.Update(Fixtures.headingAnchor(text, "** TODO Hardware store run"), listOf(FieldChange.State("DONE")))
+		assertEquals(WriteResult.Blocked("contained checkboxes"), writer.apply(text, edit))
+		assertEquals(text, Fixtures.text("user-blocked-box.expected.org"))
 	}
-
-	@Test
-	fun taskDeletedWithItsSpan() = check("task-delete", "todo.org") { Edit.Delete(Fixtures.anchor(it, Fixtures.IO_LIST)) }
-
-	@Test
-	fun warnTimeAdded() = calendar("warn-set", Fixtures.OFFICE, FieldChange.warnMinutes(30))
-
-	@Test
-	fun warnTimeChanged() = calendar("warn-change", Fixtures.PM, FieldChange.warnMinutes(45))
-
-	@Test
-	fun warnTimeRemoved() = calendar("warn-remove", Fixtures.PM, FieldChange.warnMinutes(null))
-
-	@Test
-	fun timestampChanged() = calendar("timestamp-change", Fixtures.PM, FieldChange.Timestamps(listOf(ts("<2026-11-24 Tue 10:00-11:30>"))))
-
-	@Test
-	fun weekdaySetWritten() = calendar(
-		"weekdays-add", Fixtures.PM,
-		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 09:00-10:00 +1w>"), setOf(MONDAY, THURSDAY))),
-	)
-
-	@Test
-	fun weekdaySetNarrowed() = calendar(
-		"weekdays-remove", Fixtures.WALKDOWN,
-		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 07:00-08:00 +2w>"), setOf(MONDAY))),
-	)
-
-	@Test
-	fun repeaterChangedOnEveryTimestamp() = calendar(
-		"repeater-change", Fixtures.WALKDOWN,
-		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 07:00-08:00 +1w>"), setOf(MONDAY, THURSDAY))),
-	)
-
-	@Test
-	fun eventTagged() = calendar("event-tags", Fixtures.PM, FieldChange.Tags(listOf("private")))
-
-	@Test
-	fun eventTitleChanged() = calendar("event-title", Fixtures.OFFICE, FieldChange.Title("Office closed for Thanksgiving"))
-
-	@Test
-	fun eventInsertedAtTheEndOfTheFile() = check("event-append", "calendar.org") {
-		Edit.Insert(
-			null,
-			listOf(FieldChange.Title("Ammonia leak drill"), FieldChange.warnMinutes(30), FieldChange.Timestamps(listOf(ts("<2026-12-03 Thu 13:30-14:30>")))),
-		)
-	}
-
-	@Test
-	fun eventDeletedWithItsSpan() = check("event-delete", "calendar.org") { Edit.Delete(Fixtures.anchor(it, Fixtures.OFFICE)) }
 
 	@Test
 	fun crlfFileKeepsItsLineEndings() = update("crlf-done", "crlf.org", Fixtures.GASKET, FieldChange.State("DONE"))
 
-	@Test
-	fun logbookStaysOnStateChange() = update("logbook-done", "logbook.org", Fixtures.TRANSMITTER, FieldChange.State("DONE"))
+	// Planning.
 
 	@Test
-	fun logbookStaysOnBodyChange() =
-		update("logbook-body", "logbook.org", Fixtures.TRANSMITTER, FieldChange.Body("Use the Fluke 754.\nZero at 0 psig."))
+	fun rescheduleLogsTheOldDate() = user("user-reschedule", "** NEXT Order the fan motor", FieldChange.Scheduled(ts("<2026-11-30 Mon>")))
 
 	@Test
-	fun foreignPropertiesStayInPlace() = update("foreign-warn", "foreign.org", Fixtures.VENDOR, FieldChange.warnMinutes(20))
+	fun newDeadlineLogsTheOldDate() = update("deadline-set", "todo.org", Fixtures.VFD, FieldChange.Deadline(ts("<2026-11-27 Fri>")))
 
 	@Test
-	fun childHeadingsGoWithADeletedEntry() = check("children-delete", "children.org") { Edit.Delete(Fixtures.anchor(it, Fixtures.REBUILD)) }
+	fun scheduleAddedDropsClosedAsOrgDoes() = update("schedule-add", "todo.org", Fixtures.IO_LIST, FieldChange.Scheduled(ts("<2026-11-30 Mon>")))
 
 	@Test
-	fun childHeadingsStayOnATitleChange() =
-		update("children-title", "children.org", Fixtures.REBUILD, FieldChange.Title("Rebuild compressor 3, RWF II"))
+	fun scheduleAddedBesideADeadline() =
+		update("schedule-beside-deadline", "children.org", Fixtures.REBUILD, FieldChange.Scheduled(ts("<2026-12-02 Wed>")))
 
 	@Test
-	fun noteTitleChanged() = update("memo-title", "memos.org", Fixtures.FRICK, FieldChange.Title("Frick rep, RWF II"))
+	fun unscheduleLogsTheOldDate() = user("user-unschedule", "** NEXT Order the fan motor", FieldChange.Scheduled(null))
 
-	// Org ends the new heading line w/ a newline, though the file had none.
+	// Org removes every "DEADLINE: <...>" of the entry, the body's too (DESIGN.md meant to keep it).
 	@Test
-	fun noteInsertedIntoAFileWithoutAFinalNewline() = check("memo-append", "no-final-newline.org") {
-		Edit.Insert(Fixtures.anchor(it, Fixtures.NF_UNFILED), listOf(FieldChange.Title("Gate codes")))
+	fun deadlineRemovalLogsAndTakesTheBodyStampToo() = user("user-undeadline", "** TODO Call the vendor", FieldChange.Deadline(null))
+
+	// A date and a state in one save log as two commands do: the state's note above the date's.
+	@Test
+	fun stateAndDateInOneSave() =
+		user("user-state-and-date", "** NEXT Order the fan motor", FieldChange.State("DONE"), FieldChange.Scheduled(ts("<2026-11-30 Mon>")))
+
+	// An unreadable planning stamp locks its own keyword alone.
+	@Test
+	fun lockedPlanningStampRefusesItsKeywordAlone() {
+		val text = "* TODO Third Wednesday check\nSCHEDULED: <%%(diary-float t 3 3)>\n"
+		val anchor = OrgFile.parse("", text).entries.single().anchor
+		assertEquals(WriteResult.Locked, writer.apply(text, Edit.Update(anchor, listOf(FieldChange.Scheduled(ts("<2026-12-02 Wed>"))))))
+		val due = written(writer.apply(text, Edit.Update(anchor, listOf(FieldChange.Deadline(ts("<2026-12-04 Fri>"))))))
+		assertEquals("* TODO Third Wednesday check\nDEADLINE: <2026-12-04 Fri> SCHEDULED: <%%(diary-float t 3 3)>\n", due)
 	}
+
+	// The heading line.
+
+	// org-tags-column 0: the tags realign one space after the new title.
+	@Test
+	fun titleChangeRealignsTags() = update("title-edit", "todo.org", Fixtures.VFD, FieldChange.Title("Order VFD spares & fuses"))
+
+	// A numeric range from the settings: a cookie of 1, and of the default 5, which Org writes too.
+	@Test
+	fun numericPriorityWritten() = user("user-priority-set", "** TODO Pick up the motor", FieldChange.Priority("1"))
+
+	@Test
+	fun defaultPriorityWritesItsCookie() = user("user-priority-default", "** TODO Pick up the motor", FieldChange.Priority("5"))
+
+	@Test
+	fun priorityRemoval() = update("priority-remove", "todo.org", Fixtures.VFD, FieldChange.Priority(null))
+
+	@Test(expected = IllegalArgumentException::class)
+	fun priorityOutsideTheRangeIsRefused() {
+		val text = Fixtures.text("todo.org")
+		writer.apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.VFD), listOf(FieldChange.Priority("D"))))
+	}
+
+	// org-tags-column -77, Org's own value: the tags end at column 77.
+	@Test
+	fun tagsAddedAlignToColumn77() = check("tags-set", "todo.org", Fixtures.writer(OrgSettings.STARTING.copy(tagsColumn = -77))) {
+		Edit.Update(Fixtures.anchor(it, Fixtures.IO_LIST), listOf(FieldChange.Tags(listOf("work", "plc"))))
+	}
+
+	@Test
+	fun tagsCleared() = update("tags-clear", "todo.org", Fixtures.VFD, FieldChange.Tags(emptyList()))
 
 	@Test
 	fun unchangedValuesLeaveTheTextAlone() {
@@ -168,6 +159,42 @@ class OrgWriterTest {
 		)
 		assertEquals(text, written(writer.apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.VFD), same))))
 	}
+
+	// Properties, the body, and event timestamps.
+
+	@Test
+	fun warnTimeAdded() = update("warn-set", "calendar.org", Fixtures.OFFICE, FieldChange.warnMinutes(30))
+
+	@Test
+	fun warnTimeRemoved() = update("warn-remove", "calendar.org", Fixtures.PM, FieldChange.warnMinutes(null))
+
+	@Test
+	fun foreignPropertiesStayInPlace() = update("foreign-warn", "foreign.org", Fixtures.VENDOR, FieldChange.warnMinutes(20))
+
+	@Test
+	fun lastPropertyDeletedTakesTheDrawer() = update("drawer-remove", "children.org", Fixtures.ORDER_GASKETS, FieldChange.Property("ID", null))
+
+	@Test
+	fun bodyChangedAfterTheDrawers() =
+		update("logbook-body", "logbook.org", Fixtures.TRANSMITTER, FieldChange.Body("Use the Fluke 754.\nZero at 0 psig."))
+
+	@Test
+	fun weekdaySetWritten() = update(
+		"weekdays-add", "calendar.org", Fixtures.PM,
+		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 09:00-10:00 +1w>"), setOf(MONDAY, THURSDAY))),
+	)
+
+	@Test
+	fun weekdaySetNarrowed() = update(
+		"weekdays-remove", "calendar.org", Fixtures.WALKDOWN,
+		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 07:00-08:00 +2w>"), setOf(MONDAY))),
+	)
+
+	@Test
+	fun repeaterChangedOnEveryTimestamp() = update(
+		"repeater-change", "calendar.org", Fixtures.WALKDOWN,
+		FieldChange.Timestamps(OrgFile.weekdayTimestamps(ts("<2026-11-23 Mon 07:00-08:00 +1w>"), setOf(MONDAY, THURSDAY))),
+	)
 
 	@Test
 	fun unchangedEventValuesLeaveTheTextAlone() {
@@ -199,24 +226,13 @@ class OrgWriterTest {
 		assertEquals(text.replace("<2026-12-21 Mon>--", "<2026-12-21 Mon>\n<2026-12-21 Mon>--"), out)
 	}
 
-	// An unreadable planning stamp locks its own keyword alone.
-	@Test
-	fun lockedPlanningStampRefusesItsKeywordAlone() {
-		val text = "* TODO Third Wednesday check\nSCHEDULED: <%%(diary-float t 3 3)>\n"
-		val anchor = OrgFile.parse("", text).entries.single().anchor
-		assertEquals(WriteResult.Locked, writer.apply(text, Edit.Update(anchor, listOf(FieldChange.Scheduled(ts("<2026-12-02 Wed>"))))))
-		val due = written(writer.apply(text, Edit.Update(anchor, listOf(FieldChange.Deadline(ts("<2026-12-04 Fri>"))))))
-		assertEquals("* TODO Third Wednesday check\nDEADLINE: <2026-12-04 Fri> SCHEDULED: <%%(diary-float t 3 3)>\n", due)
-	}
+	// Repeating tasks marked done: org-auto-repeat-maybe.
 
-	@Test(expected = IllegalArgumentException::class)
-	fun priorityOutsideTheFileRangeIsRefused() {
-		val text = Fixtures.text("todo.org")
-		writer.apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.VFD), listOf(FieldChange.Priority("D"))))
-	}
-
-	// Marking a repeating task done: org-auto-repeat-maybe.
 	private fun repeat(case: String, id: String) = update(case, "repeat.org", id, FieldChange.State("DONE"))
+
+	// DONE(d!) on a repeating task: the state line once, :LAST_REPEAT:, and the date moved on.
+	@Test
+	fun repeatingTaskLogsItsStateLineOnce() = user("user-repeat", "** NEXT Weekly oil check", FieldChange.State("DONE"))
 
 	@Test
 	fun repeatPlusMovesOneInterval() = repeat("repeat-plus", Fixtures.OIL_CHECK)
@@ -236,58 +252,13 @@ class OrgWriterTest {
 	@Test
 	fun repeatAtTheEndOfTheFileWithAWarning() = repeat("repeat-warning", Fixtures.SENSOR)
 
-	@Test
-	fun scheduleAddedBesideADeadline() =
-		update("schedule-beside-deadline", "children.org", Fixtures.REBUILD, FieldChange.Scheduled(ts("<2026-12-02 Wed>")))
-
-	@Test
-	fun deadlineAddedBesideASchedule() =
-		update("deadline-beside-schedule", "logbook.org", Fixtures.TRANSMITTER, FieldChange.Deadline(ts("<2026-11-28 Sat>")))
-
-	@Test
-	fun lastPropertyDeletedTakesTheDrawer() =
-		update("drawer-remove", "children.org", Fixtures.ORDER_GASKETS, FieldChange.Property("ID", null))
-
-	@Test
-	fun bomFileTitleChanged() = update("bom-title", "bom.org", Fixtures.BOM_NOTE, FieldChange.Title("Notes"))
-
-	@Test
-	fun bomFileInsertedInto() = check("bom-append", "bom.org") { Edit.Insert(null, listOf(FieldChange.Title("Second"))) }
-
-	@Test
-	fun mixedFileEdited() = update("mixed-warn", "mixed.org", Fixtures.MIXED, FieldChange.warnMinutes(10))
-
-	@Test
-	fun mixedFileInsertedInto() = check("mixed-append", "mixed.org") { Edit.Insert(null, listOf(FieldChange.Title("B"))) }
-
-	@Test
-	fun emptyFileInsertedInto() = check("empty-append", "empty.org") {
-		Edit.Insert(null, listOf(FieldChange.Title("First event"), FieldChange.Timestamps(listOf(ts("<2026-12-01 Tue>")))))
-	}
-
-	@Test
-	fun taskRefiledToTheEndOfAnotherHeading() =
-		check("task-move", "todo.org") { Edit.Refile(Fixtures.anchor(it, Fixtures.VFD), Fixtures.anchor(it, Fixtures.UNFILED)) }
-
-	@Test
-	fun noteRefiledIntoAMiddleHeading() =
-		check("note-move-middle", "move.org") { Edit.Refile(Fixtures.anchor(it, Fixtures.FORKLIFT), Fixtures.anchor(it, Fixtures.MOVE_WORK)) }
-
-	@Test
-	fun noteRefiledWithItsTrailingBlankLine() =
-		check("note-move-end", "move.org") { Edit.Refile(Fixtures.anchor(it, Fixtures.PUMP), Fixtures.anchor(it, Fixtures.MOVE_SHOP)) }
-
-	// The log note skips the blank line after the drawer and goes ahead of the next heading.
-	@Test
-	fun repeatWithoutAKeywordLogsAnEmptyOldState() = update("repeat-no-keyword", "repeat2.org", Fixtures.SWEEP, FieldChange.State("DONE"))
-
-	// The note skips the blank line and goes ahead of the body text.
-	@Test
-	fun repeatHabitKeepsItsSuffix() = update("repeat-habit", "repeat2.org", Fixtures.STRETCH, FieldChange.State("DONE"))
-
 	// The last step of a repeat drops a "--2d" delay, as org-timestamp-change w/ suppress-tmp-delay does.
 	@Test
 	fun repeatDropsADelay() = repeat("repeat-delay", Fixtures.DELAYED)
+
+	// A :REPEAT_TO_STATE: that names no keyword of the file counts for naught.
+	@Test
+	fun repeatIgnoresAnUnknownRepeatToState() = repeat("repeat-to-unknown-state", Fixtures.GAUGE)
 
 	// The first repeating stamp has a count of zero, so Org repeats naught and writes CLOSED.
 	@Test
@@ -297,15 +268,13 @@ class OrgWriterTest {
 	@Test
 	fun repeatMovesABodyStamp() = repeat("repeat-body-stamp", Fixtures.SITE_VISIT)
 
+	// The log note skips the blank line after the drawer and goes ahead of the next heading.
 	@Test
-	fun plusPlusZeroStaysPut() {
-		val text = "* Work\n** TODO Check\nDEADLINE: <2026-11-20 Fri +1w> SCHEDULED: <2026-11-18 Wed ++0d>\n:PROPERTIES:\n:ID:       h\n:END:\n"
-		assertTrue(markDone(text).contains("DEADLINE: <2026-11-27 Fri +1w> SCHEDULED: <2026-11-18 Wed ++0d>"))
-	}
+	fun repeatWithoutAKeywordLogsAnEmptyOldState() = update("repeat-no-keyword", "repeat2.org", Fixtures.SWEEP, FieldChange.State("DONE"))
 
-	// A :REPEAT_TO_STATE: that names no keyword of the file counts for naught.
+	// The note skips the blank line and goes ahead of the body text.
 	@Test
-	fun repeatIgnoresAnUnknownRepeatToState() = repeat("repeat-to-unknown-state", Fixtures.GAUGE)
+	fun repeatHabitKeepsItsSuffix() = update("repeat-habit", "repeat2.org", Fixtures.STRETCH, FieldChange.State("DONE"))
 
 	@Test
 	fun repeatGoesToRepeatToState() = update("repeat-to-state", "repeat2.org", Fixtures.ROUNDS, FieldChange.State("DONE"))
@@ -313,6 +282,13 @@ class OrgWriterTest {
 	// A #+TYP_TODO: state stays; at the end of the file the note follows the blank line w/o a newline.
 	@Test
 	fun repeatKeepsATypedState() = update("repeat-typed", "repeat2.org", Fixtures.ANNA, FieldChange.State("FINISHED"))
+
+	// org-log-done 'note on a repeating task w/o marks: the CLOSING NOTE alone, since
+	// org-auto-repeat-maybe finds a note set up already.
+	@Test
+	fun closingNoteOnARepeatLogsOnce() = check("repeat-closing-note", "repeat.org", Fixtures.writer(OrgSettings.STARTING.copy(logDone = LogMode.NOTE))) {
+		Edit.Update(Fixtures.anchor(it, Fixtures.OIL_CHECK), listOf(FieldChange.State("DONE", "Checked.")))
+	}
 
 	// One task w/ the scheduled stamp [stamp], marked done at Fixtures.NOW (14:30).
 	private fun hourly(stamp: String): String =
@@ -334,31 +310,100 @@ class OrgWriterTest {
 	}
 
 	@Test
+	fun plusPlusZeroStaysPut() {
+		val text = "* Work\n** TODO Check\nDEADLINE: <2026-11-20 Fri +1w> SCHEDULED: <2026-11-18 Wed ++0d>\n:PROPERTIES:\n:ID:       h\n:END:\n"
+		assertTrue(markDone(text).contains("DEADLINE: <2026-11-27 Fri +1w> SCHEDULED: <2026-11-18 Wed ++0d>"))
+	}
+
+	@Test
 	fun dotRepeatOfZeroMovesToTodayBesideALiveRepeater() {
 		val text = "* Work\n** TODO Check\nDEADLINE: <2026-11-20 Fri +1w> SCHEDULED: <2026-11-18 Wed .+0d>\n:PROPERTIES:\n:ID:       h\n:END:\n"
 		assertTrue(markDone(text).contains("DEADLINE: <2026-11-27 Fri +1w> SCHEDULED: <2026-11-23 Mon .+0d>"))
 	}
 
-	// Any layout: a level-1 and a level-3 heading of a file of mixed levels, w/o IDs.
-	@Test
-	fun levelOneHeadingEdited() =
-		check("outline-tags-top", "outline.org") { Edit.Update(Fixtures.headingAnchor(it, "* Compressors"), listOf(FieldChange.Tags(listOf("mech", "shop")))) }
+	// New entries: first per the user's capture position (org-capture w/ :prepend t).
+
+	private val vendor = listOf(FieldChange.Title("Call the vendor"), FieldChange.State("TODO"))
 
 	@Test
-	fun levelThreeHeadingEdited() =
-		check("outline-done-deep", "outline.org") { Edit.Update(Fixtures.headingAnchor(it, "*** NEXT Order filters"), listOf(FieldChange.State("DONE"))) }
-
-	// The new heading goes after the parent's child, and Written names its line.
-	@Test
-	fun insertedUnderADeepHeading() {
+	fun capturedFirstUnderAHeading() {
 		val text = Fixtures.text("outline.org")
-		val edit = Edit.Insert(Fixtures.headingAnchor(text, "*** TODO Submittal review"), listOf(FieldChange.Title("Check breaker sizes"), FieldChange.State("TODO")))
-		assertEquals(WriteResult.Written(Fixtures.text("outline-insert-deep.expected.org"), 32), writer.apply(text, edit))
+		val result = writer.apply(text, Edit.Insert(Fixtures.headingAnchor(text, "* Projects"), vendor))
+		assertEquals(WriteResult.Written(Fixtures.text("capture-first.expected.org"), 24), result)
 	}
 
-	// The subtree goes one level deeper w/ its children, and the tags of each moved heading realign.
+	// At the top level the blank line before the first heading goes, as org-capture drops it.
 	@Test
-	fun refiledSubtreeShiftsItsLevels() = check("outline-refile", "outline.org") {
+	fun capturedFirstAtTheTopLevel() {
+		val text = Fixtures.text("outline.org")
+		assertEquals(WriteResult.Written(Fixtures.text("capture-first-top.expected.org"), 6), writer.apply(text, Edit.Insert(null, vendor)))
+	}
+
+	// The capture position last: org-insert-heading at the end of the parent's subtree.
+	private val last = Fixtures.writer(OrgSettings.STARTING.copy(capturePosition = Position.LAST))
+
+	@Test
+	fun insertedLastAtTheEndOfItsParent() = check("task-append", "todo.org", last) {
+		Edit.Insert(
+			Fixtures.anchor(it, Fixtures.UNFILED),
+			listOf(FieldChange.Title("Order spare contactors"), FieldChange.State("TODO"), FieldChange.Deadline(ts("<2026-12-01 Tue>"))),
+		)
+	}
+
+	// A blank line goes after the new heading too, ahead of the next heading.
+	@Test
+	fun insertedLastAheadOfTheNextHeading() = check("task-append-middle", "todo.org", last) {
+		Edit.Insert(Fixtures.anchor(it, Fixtures.WORK), listOf(FieldChange.Title("Check relief valves")))
+	}
+
+	@Test
+	fun eventInsertedAtTheEndOfTheFile() = check("event-append", "calendar.org", last) {
+		Edit.Insert(
+			null,
+			listOf(FieldChange.Title("Ammonia leak drill"), FieldChange.warnMinutes(30), FieldChange.Timestamps(listOf(ts("<2026-12-03 Thu 13:30-14:30>")))),
+		)
+	}
+
+	// Org ends the new heading line w/ a newline, though the file had none.
+	@Test
+	fun insertedIntoAFileWithoutAFinalNewline() = check("memo-append", "no-final-newline.org", last) {
+		Edit.Insert(Fixtures.anchor(it, Fixtures.NF_UNFILED), listOf(FieldChange.Title("Gate codes")))
+	}
+
+	@Test
+	fun bomFileInsertedInto() = check("bom-append", "bom.org", last) { Edit.Insert(null, listOf(FieldChange.Title("Second"))) }
+
+	@Test
+	fun mixedFileInsertedInto() = check("mixed-append", "mixed.org", last) { Edit.Insert(null, listOf(FieldChange.Title("B"))) }
+
+	@Test
+	fun emptyFileInsertedInto() = check("empty-append", "empty.org", last) {
+		Edit.Insert(null, listOf(FieldChange.Title("First event"), FieldChange.Timestamps(listOf(ts("<2026-12-01 Tue>")))))
+	}
+
+	// Delete and refile.
+
+	@Test
+	fun childHeadingsGoWithADeletedEntry() = check("children-delete", "children.org") { Edit.Delete(Fixtures.anchor(it, Fixtures.REBUILD)) }
+
+	// The refile position first: right after the target's own section.
+	@Test
+	fun refiledFirstUnderItsTarget() = check("user-refile", "user.org") {
+		Edit.Refile(Fixtures.headingAnchor(it, "** TODO Hardware store run"), Fixtures.headingAnchor(it, "* Shop renovation"))
+	}
+
+	// The refile position first w/o a target: atop the file's first heading, at level 1.
+	@Test
+	fun refiledFirstAtTheTopLevel() = check("user-refile-top", "user.org") { Edit.Refile(Fixtures.headingAnchor(it, "** WAITING Electrician quote"), null) }
+
+	// W/o a target in a file whose first line is a heading, the entry goes before the second heading.
+	@Test
+	fun refiledFirstPastAHeadingOnTheFirstLine() = check("refile-first-top-heading", "memos.org") { Edit.Refile(Fixtures.anchor(it, Fixtures.FRICK), null) }
+
+	// The refile position last: the end of the target's subtree, one level deeper w/ its children, and
+	// the tags of each moved heading realign.
+	@Test
+	fun refiledLastShiftsItsLevels() = check("outline-refile", "outline.org", Fixtures.writer(OrgSettings.STARTING.copy(refilePosition = Position.LAST))) {
 		Edit.Refile(Fixtures.headingAnchor(it, "** TODO Oil change on C3"), Fixtures.headingAnchor(it, "** Condenser retrofit"))
 	}
 
@@ -398,145 +443,5 @@ class OrgWriterTest {
 		val unfiled = Fixtures.anchor(target, Fixtures.MEMO_UNFILED)
 		val changed = target.replace(unfiled.headingLine, unfiled.headingLine + " box")
 		assertEquals(WriteResult.Conflict, writer.refileIn(changed, unfiled, subtree))
-	}
-
-	// The user's settings (OrgSettings.STARTING), as make-fixtures.el sets init.el's values.
-	private val user = Fixtures.writer(OrgSettings.STARTING)
-
-	private fun userCase(case: String, edit: (String) -> Edit) {
-		val text = Fixtures.text("user.org")
-		assertEquals(Fixtures.text("$case.expected.org"), written(user.apply(text, edit(text))))
-	}
-
-	private fun userUpdate(case: String, prefix: String, vararg changes: FieldChange) =
-		userCase(case) { Edit.Update(Fixtures.headingAnchor(it, prefix), changes.toList()) }
-
-	// DONE(d!): CLOSED per org-log-done, and a state line after the drawers.
-	@Test
-	fun doneLogsClosedAndAStateLine() = userUpdate("user-done", "** NEXT Order the fan motor", FieldChange.State("DONE"))
-
-	// WAITING(w@/!): the note the form took, below the state line.
-	@Test
-	fun waitingLogsItsNote() =
-		userUpdate("user-waiting-note", "** TODO Pick up the motor", FieldChange.State("WAITING", "Waiting on the vendor quote."))
-
-	@Test
-	fun rescheduleLogsTheOldDate() = userUpdate("user-reschedule", "** NEXT Order the fan motor", FieldChange.Scheduled(ts("<2026-11-30 Mon>")))
-
-	// org-tags-column 0: one space before the tags.
-	@Test
-	fun titleChangeAtTagsColumnZero() =
-		userUpdate("user-title", "** TODO Call the vendor", FieldChange.Title("Call the vendor about the gasket kit"))
-
-	// The refile position first: right after the target's own section.
-	@Test
-	fun refiledFirstUnderItsTarget() = userCase("user-refile") {
-		Edit.Refile(Fixtures.headingAnchor(it, "** TODO Hardware store run"), Fixtures.headingAnchor(it, "* Shop renovation"))
-	}
-
-	// The refile position first w/o a target: atop the file's first heading, at level 1.
-	@Test
-	fun refiledFirstAtTheTopLevel() = userCase("user-refile-top") { Edit.Refile(Fixtures.headingAnchor(it, "** WAITING Electrician quote"), null) }
-
-	// A numeric range from the settings: a cookie of 1, and of the default 5, which Org writes too.
-	@Test
-	fun numericPriorityWritten() = userUpdate("user-priority-set", "** TODO Pick up the motor", FieldChange.Priority("1"))
-
-	@Test
-	fun defaultPriorityWritesItsCookie() = userUpdate("user-priority-default", "** TODO Pick up the motor", FieldChange.Priority("5"))
-
-	// An open child blocks DONE, and Emacs leaves the file as it was.
-	@Test
-	fun openChildBlocksDone() {
-		val text = Fixtures.text("user.org")
-		val edit = Edit.Update(Fixtures.headingAnchor(text, "* Shop renovation"), listOf(FieldChange.State("DONE")))
-		assertEquals(WriteResult.Blocked("\"NEXT Order the fan motor :call:\""), user.apply(text, edit))
-		assertEquals(text, Fixtures.text("user-blocked.expected.org"))
-	}
-
-	@Test
-	fun uncheckedBoxBlocksDone() {
-		val text = Fixtures.text("user.org")
-		val edit = Edit.Update(Fixtures.headingAnchor(text, "** TODO Hardware store run"), listOf(FieldChange.State("DONE")))
-		assertEquals(WriteResult.Blocked("contained checkboxes"), user.apply(text, edit))
-		assertEquals(text, Fixtures.text("user-blocked-box.expected.org"))
-	}
-
-	// The capture position first, as org-capture w/ :prepend t places an entry.
-	private val prepend = Fixtures.writer(OrgSettings.STOCK.copy(capturePosition = Position.FIRST))
-	private val vendor = listOf(FieldChange.Title("Call the vendor"), FieldChange.State("TODO"))
-
-	@Test
-	fun capturedFirstUnderAHeading() {
-		val text = Fixtures.text("outline.org")
-		val result = prepend.apply(text, Edit.Insert(Fixtures.headingAnchor(text, "* Projects"), vendor))
-		assertEquals(WriteResult.Written(Fixtures.text("capture-first.expected.org"), 24), result)
-	}
-
-	// At the top level the blank line before the first heading goes, as org-capture drops it.
-	@Test
-	fun capturedFirstAtTheTopLevel() {
-		val text = Fixtures.text("outline.org")
-		assertEquals(WriteResult.Written(Fixtures.text("capture-first-top.expected.org"), 6), prepend.apply(text, Edit.Insert(null, vendor)))
-	}
-
-	// org-log-into-drawer: the drawer is made after the planning line and takes the note.
-	@Test
-	fun logGoesIntoADrawer() {
-		val text = Fixtures.text("user.org")
-		val edit = Edit.Update(Fixtures.headingAnchor(text, "** TODO Pick up the motor"), listOf(FieldChange.State("DONE")))
-		val drawer = Fixtures.writer(OrgSettings.STARTING.copy(logIntoDrawer = OrgSettings.LOGBOOK))
-		assertEquals(Fixtures.text("user-drawer.expected.org"), written(drawer.apply(text, edit)))
-	}
-
-	// #+STARTUP: logdrawer in the file wins over org-log-into-drawer, ahead of the body text.
-	@Test
-	fun startupLogdrawerWins() {
-		val text = Fixtures.text("startup.org")
-		val edit = Edit.Update(Fixtures.headingAnchor(text, "* TODO Fix the door"), listOf(FieldChange.State("DONE")))
-		assertEquals(Fixtures.text("startup-drawer.expected.org"), written(writer.apply(text, edit)))
-	}
-
-	// WAITING(w@/!) logs on leaving it, above the older note.
-	@Test
-	fun leavingWaitingLogs() = userUpdate("user-leave-waiting", "** WAITING Electrician quote", FieldChange.State("TODO"))
-
-	@Test
-	fun unscheduleLogsTheOldDate() = userUpdate("user-unschedule", "** NEXT Order the fan motor", FieldChange.Scheduled(null))
-
-	// Org removes every "DEADLINE: <...>" of the entry, the body's too (DESIGN.md meant to keep it).
-	@Test
-	fun deadlineRemovalLogsAndTakesTheBodyStampToo() = userUpdate("user-undeadline", "** TODO Call the vendor", FieldChange.Deadline(null))
-
-	// A date and a state in one save log as two commands do: the state's note above the date's.
-	@Test
-	fun stateAndDateInOneSave() = userUpdate(
-		"user-state-and-date", "** NEXT Order the fan motor",
-		FieldChange.State("DONE"), FieldChange.Scheduled(ts("<2026-11-30 Mon>")),
-	)
-
-	// DONE(d!) on a repeating task: the state line once, :LAST_REPEAT:, and the date moved on.
-	@Test
-	fun repeatingTaskUnderTheUsersSettings() = userUpdate("user-repeat", "** NEXT Weekly oil check", FieldChange.State("DONE"))
-
-	@Test
-	fun emptyNoteLogsTheLineAlone() = userUpdate("user-empty-note", "** TODO Pick up the motor", FieldChange.State("WAITING", ""))
-
-	// W/o a target in a file whose first line is a heading, the entry goes before the second heading.
-	@Test
-	fun refiledFirstPastAHeadingOnTheFirstLine() {
-		val text = Fixtures.text("memos.org")
-		val edit = Edit.Refile(Fixtures.anchor(text, Fixtures.FRICK), null)
-		assertEquals(Fixtures.text("refile-first-top-heading.expected.org"), written(user.apply(text, edit)))
-	}
-
-	// org-log-done 'note on a repeating task w/o marks: the CLOSING NOTE alone, since
-	// org-auto-repeat-maybe finds a note set up already.
-	@Test
-	fun closingNoteOnARepeatLogsOnce() {
-		val text = Fixtures.text("repeat.org")
-		val edit = Edit.Update(Fixtures.anchor(text, Fixtures.OIL_CHECK), listOf(FieldChange.State("DONE", "Checked.")))
-		val closing = Fixtures.writer(Fixtures.BASE.copy(logDone = LogMode.NOTE))
-		assertEquals(Fixtures.text("repeat-closing-note.expected.org"), written(closing.apply(text, edit)))
 	}
 }

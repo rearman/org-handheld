@@ -158,8 +158,8 @@ data class TodoKeywords(val sequences: List<TodoSequence>) {
 	fun logOf(keyword: String?): KeywordLog? = keyword?.let { k -> sequences.lastOrNull { k in it.logs }?.logs?.get(k) }
 
 	companion object {
-		val DEFAULT = TodoKeywords(OrgSettings.STOCK.todoKeywords)
-		fun of(doc: OrgDocument, fallback: List<TodoSequence> = OrgSettings.STOCK.todoKeywords): TodoKeywords {
+		val DEFAULT = TodoKeywords(OrgSettings().todoKeywords)
+		fun of(doc: OrgDocument, fallback: List<TodoSequence> = OrgSettings().todoKeywords): TodoKeywords {
 			val words = { name: String -> doc.keywordValues(name).map { OrgDocument.words(it) }.filter { it.isNotEmpty() } }
 			val sequences = words("TYP_TODO").map { TodoSequence.of(it, true) } +
 				(words("TODO") + words("SEQ_TODO")).map { TodoSequence.of(it, false) }
@@ -317,7 +317,7 @@ data class Planning(
 // A parsed org file of any layout: its [path] (which gives the category of last resort), its document,
 // and an Entry per heading, read per DESIGN.md section 3 under [settings] w/ the file's own #+STARTUP:
 // words applied.
-class OrgFile(val path: String, val document: OrgDocument, settings: OrgSettings = OrgSettings.STOCK) {
+class OrgFile(val path: String, val document: OrgDocument, settings: OrgSettings = OrgSettings()) {
 	val settings: OrgSettings = settings.forFile(document)
 	val keywords: TodoKeywords = TodoKeywords.of(document, this.settings.todoKeywords)
 	val priorities: Priorities = Priorities.of(document, this.settings.priorities)
@@ -448,7 +448,7 @@ class OrgFile(val path: String, val document: OrgDocument, settings: OrgSettings
 		// An unchecked or partly checked box on a list item, as org-block-todo-from-checkboxes finds it.
 		private val CHECKBOX = Regex("""[ \t]*(?:[-+*]|\d+[.)])[ \t]+(?:\[@(?:start:)?(?:\d+|[A-Za-z])\][ \t]*)?\[[- ]\].*""", RegexOption.DOT_MATCHES_ALL)
 
-		fun parse(path: String, text: String, settings: OrgSettings = OrgSettings.STOCK): OrgFile =
+		fun parse(path: String, text: String, settings: OrgSettings = OrgSettings()): OrgFile =
 			OrgFile(path, OrgDocument.parse(text), settings)
 
 		// [tags] w/o duplicates, each at its last place, as Org's nreverse, delete-dups, nreverse keeps

@@ -20,3 +20,13 @@ todo.org	19	Unfiled
 memos.org	0	Work		
 memos.org	5	Work		Work
 memos.org	11	Unfiled		
+user.org	2	user	home:undertaking	
+user.org	3	user	home:call	Shop renovation
+user.org	9	user	home	Shop renovation
+user.org	10	user	home:call	Shop renovation
+user.org	13	user	home	
+user.org	14	user	home:errand	Errands
+user.org	17	user	home	
+user.org	18	user	home:call	Inbox
+user.org	21	user	home	
+user.org	22	user	home	Routine

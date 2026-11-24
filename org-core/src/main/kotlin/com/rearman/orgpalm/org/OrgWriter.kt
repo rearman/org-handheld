@@ -80,7 +80,7 @@ data class Subtree(val anchor: Anchor, val lines: List<Line>, val level: Int)
 // Span edits per DESIGN.md section 4: each change rewrites only the lines its field owns, in the way the
 // Org command for that field rewrites them under [settings] (tools/make-fixtures.el makes the fixtures
 // that check this). [clock] gives the time of a CLOSED stamp, of a log note, of a repeat, and of today.
-class OrgWriter(private val clock: () -> LocalDateTime, private val settings: OrgSettings = OrgSettings.STOCK) {
+class OrgWriter(private val clock: () -> LocalDateTime, private val settings: OrgSettings = OrgSettings()) {
 	// Apply [edit] to the text of a file as it stands now.
 	fun apply(text: String, edit: Edit): WriteResult = apply(parse(text), edit)
 

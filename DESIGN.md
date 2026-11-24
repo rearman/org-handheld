@@ -95,7 +95,7 @@ A file carries few of the settings that govern how Org reads & writes it; the re
 | `org-priority-highest`, `-lowest`, `-default` | 1, 5, 5                                                 |
 | `org-agenda-files` (subfolders per folder)    | off, as `~/org` reads flat                              |
 
-The fixtures run under two sets of values: Org's stock defaults, & the starting values above.
+The fixtures run under the starting values above; a case that tests another value of one variable sets that variable alone.
 
 ### Entries
 

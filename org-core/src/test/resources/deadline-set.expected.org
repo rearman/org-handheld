@@ -10,6 +10,7 @@ DEADLINE: <2026-11-27 Fri> SCHEDULED: <2026-11-23 Mon>
 :PROPERTIES:
 :ID:       5e2a9d7c-0f13-4b86-a4d2-8c1e6b0f9a37
 :END:
+- New deadline from "[2026-11-25 Wed]" on [2026-11-23 Mon 14:30]
 Two ACS580s, frame R3.
 ** DONE [#C] Update I/O list
 CLOSED: [2026-11-20 Fri 16:42]

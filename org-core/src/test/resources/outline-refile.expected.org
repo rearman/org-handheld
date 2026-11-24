@@ -22,10 +22,10 @@ Due <2026-12-04 Fri> per the GC.
 :CATEGORY: Electrical
 :END:
 Panel schedule.
-*** TODO Oil change on C3                                            :urgent:
+*** TODO Oil change on C3 :urgent:
 SCHEDULED: <2026-11-24 Tue>
 Use the 68 oil.
-**** NEXT Order filters                                               :plant:
+**** NEXT Order filters :plant:
 DEADLINE: <2026-11-27 Fri>
 **** Drain the separator
 <2026-11-25 Wed 08:00-09:00>

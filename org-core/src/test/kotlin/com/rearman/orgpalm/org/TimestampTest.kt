@@ -31,9 +31,9 @@ class TimestampTest {
 		try {
 			Locale.setDefault(Locale.forLanguageTag("ar-EG"))
 			assertEquals("<2026-11-23 Mon 09:05-10:00>", Fixtures.ts("<2026-11-23 Mon 09:05-10:00>").format())
-			val text = Fixtures.text("todo.org")
-			val done = Fixtures.writer().apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.VFD), listOf(FieldChange.State("DONE"))))
-			assertEquals(Fixtures.text("todo-done.expected.org"), (done as WriteResult.Written).text)
+			val text = Fixtures.text("user.org")
+			val done = Fixtures.writer().apply(text, Edit.Update(Fixtures.headingAnchor(text, "** NEXT Order the fan motor"), listOf(FieldChange.State("DONE"))))
+			assertEquals(Fixtures.text("user-done.expected.org"), (done as WriteResult.Written).text)
 		} finally {
 			Locale.setDefault(saved)
 		}

@@ -5,7 +5,7 @@
 :ID:       3f6a0c2e-1b84-4d97-a5e0-8c2b7d1f4e69
 :CATEGORY: Shop
 :END:
-** DONE Replace door gasket                                            :dock:
+** DONE Replace door gasket :dock:
 CLOSED: [2026-11-23 Mon 14:30] SCHEDULED: <2026-11-24 Tue>
 :PROPERTIES:
 :ID:       b85d1e3a-6c07-4f29-9a4e-0d7f2c8b1e53
