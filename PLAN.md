@@ -1,6 +1,6 @@
-# org-palm: the plan from phase 6 on
+# org-palm: the plan from phase 7 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, 2, 3, 4, & 5 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page & the saved agenda filters. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `921acdec` (2026-11-24), the end of phase 5.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 to 6 (w/ 1b) are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders, shows the Agenda, Day, Week, & Month, & edits, captures, & refiles entries through the bottom sheet, w/ a settings page, the saved agenda filters, & alarms from `:APPT_WARNTIME:`. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `13a0b496` (2026-11-24), the end of phase 6.
 
 ## Ground rules for every phase
 
@@ -11,10 +11,6 @@
 * **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
-
-## Phase 6: alarms
-
-Alarms from `:APPT_WARNTIME:` (minutes ere the start of a timed event), as `org-agenda-to-appt` reads it. Schedule the next occurrence of each w/ `AlarmManager` exact alarms (`SCHEDULE_EXACT_ALARM`, or `USE_EXACT_ALARM` if the app qualifies), post through a notification channel, & reschedule after each walk, each save, & a reboot (`BOOT_COMPLETED`).
 
 ## Phase 7: the outline browser
 
