@@ -1,6 +1,6 @@
 # org-palm: the plan from phase 2 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 & 1b are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor. CI (`gradle :org-core:test`) ran green on the 1b push of 2026-11-24; the later 1b changes (one test group under the user's settings, & form text written as typed) await their first CI run.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1 & 1b are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor. CI (`gradle :org-core:test`) is green on `9e92e256` (2026-11-24), the end of 1b.
 
 ## Ground rules for every phase
 
