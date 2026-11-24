@@ -1,6 +1,6 @@
-# org-palm: the plan from phase 3 on
+# org-palm: the plan from phase 4 on
 
-`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, & 2 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders & shows the Agenda, read-only. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `0f47cb46` (2026-11-24), the end of phase 2.
+`DESIGN.md` is the spec; this file is the order of work that builds it. Phases 1, 1b, 2, & 3 are done: `org-core` parses any org file losslessly, reads every heading as an `Entry`, writes edits as Org's own commands write them under the user's Emacs settings, & finds an edited heading in fresh text by its anchor; the app walks the picked folders & shows the Agenda, Day, Week, & Month, read-only. CI (`gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`) is green on `d489728b` (2026-11-24), the end of phase 3.
 
 ## Ground rules for every phase
 
@@ -11,12 +11,6 @@
 * **Every write test compares against Emacs.** A new write path gets a case in `tools/make-fixtures.el`, run by Org's own command under the user's settings (a case that tests another value of one variable sets that variable alone), & a test that compares bytes. One test per behavior. Run `emacs --batch -l tools/make-fixtures.el` twice; the second run must give no diff.
 * **No local JDK, Gradle, or Android SDK.** CI is the compiler. Read each change for compile errors ere pushing.
 * **jj repository.** Commit & push only on the user's word.
-
-## Phase 3: Day, Week, & Month
-
-1. A row of chips (Agenda, Day, Week, Month) picks the level; a pinch steps it (pinch in toward Month, spread out toward Agenda). The date in view stays centered across a change of level.
-2. **Day**: an hour grid, untimed entries in a band atop it. **Week**: seven day columns on one hour grid. **Month**: a grid of weeks; a tap on a day zooms to Day.
-3. A date range spans its days; a repeating stamp expands per `Timestamp.occurrences`, as Org's agenda expands it.
 
 ## Phase 4: the bottom sheet, capture, & edit
 
