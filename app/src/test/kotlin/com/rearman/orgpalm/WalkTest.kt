@@ -60,6 +60,6 @@ class WalkTest {
 			read,
 		)
 		assertEquals(listOf("b", "c"), reads)
-		assertEquals(listOf("a.org", "b.org", "c.org"), cache.files.map { it.path })
+		assertEquals(listOf("a.org", "b.org", "c.org"), cache.files.map { it.second.path })
 	}
 }

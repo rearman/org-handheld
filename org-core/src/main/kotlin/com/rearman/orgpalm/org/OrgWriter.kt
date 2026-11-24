@@ -93,6 +93,11 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 
 	private fun parse(text: String): OrgFile = OrgFile.parse("", text, settings)
 
+	// Whether a change of [h] in [file] to [keyword] logs a note, so that the form asks for one, as
+	// setState and repeat write it: the state line of a keyword marked "@" (on entry, or on leaving the
+	// old state), a CLOSING NOTE per org-log-done, or on a repeat a line per org-log-repeat.
+	fun asksNote(file: OrgFile, h: Heading, keyword: String?): Boolean = Buffer(file).asksNote(h.start, keyword)
+
 	private fun update(file: OrgFile, edit: Edit.Update): WriteResult {
 		val h = locate(file, edit.anchor) ?: return WriteResult.Conflict
 		val entry = file.entry(h)
@@ -413,6 +418,25 @@ class OrgWriter(private val clock: () -> LocalDateTime, private val settings: Or
 			}
 			stateNote?.let { pending.add(it) }
 			alignTags(hi)
+		}
+
+		// The note test of setState and repeat, w/o the edit.
+		fun asksNote(hi: Int, keyword: String?): Boolean {
+			val old = headline(hi).groups[2]?.value
+			if (keyword == null || old == keyword) return false
+			val nowDone = keywords.isDone(keyword) && !keywords.isDone(old)
+			val logging = settings.logDone != LogMode.NONE || keywords.sequences.any { it.logs.isNotEmpty() }
+			val log = if (!logging) null else keywords.logOf(keyword)?.enter?.takeIf { it != LogMode.NONE }
+				?: keywords.logOf(old)?.leave?.takeIf { it != LogMode.NONE }
+			val closing = logging && nowDone && settings.logDone != LogMode.NONE && log == null && settings.logDone == LogMode.NOTE
+			if (nowDone && repeats(hi)) {
+				return when {
+					log != null -> log == LogMode.NOTE || settings.logRepeat == LogMode.NOTE
+					closing -> true
+					else -> settings.logRepeat == LogMode.NOTE
+				}
+			}
+			return log == LogMode.NOTE || closing
 		}
 
 		// The lines of a state change log, as org-log-note-headings' "State %-12s from %-12S %t" gives

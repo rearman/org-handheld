@@ -46,13 +46,36 @@ class Stores(private val context: Context) {
 		}
 	}
 
+	suspend fun saveSettings(settings: OrgSettings) {
+		context.store.edit { SettingsCodec.write(it, settings) }
+	}
+
+	val captureTarget: Flow<CaptureTarget> = context.store.data.map { p ->
+		CaptureTarget(p[CAPTURE_FILE] ?: CaptureTarget().file, p[CAPTURE_HEADING]?.split('\n')?.filter { it.isNotEmpty() } ?: emptyList())
+	}
+
+	suspend fun setCaptureTarget(target: CaptureTarget) {
+		context.store.edit {
+			it[CAPTURE_FILE] = target.file
+			it[CAPTURE_HEADING] = target.heading.joinToString("\n")
+		}
+	}
+
 	private companion object {
+		val CAPTURE_FILE = stringPreferencesKey("capture_file")
+		val CAPTURE_HEADING = stringPreferencesKey("capture_heading")
+
 		// Each folder is stored as its mark & its tree URI.
 		val FOLDERS = stringSetPreferencesKey("folders")
 		const val FLAT = "F "
 		const val RECURSIVE = "R "
 	}
 }
+
+// The default place of a new entry (DESIGN.md section 3, Capture & refile): a file by its path below
+// its folder, & a heading by its outline path & title, or the top level of the file for none. It starts
+// at inbox.org w/o a heading, as the user's capture templates target it.
+data class CaptureTarget(val file: String = "inbox.org", val heading: List<String> = emptyList())
 
 // OrgSettings to & from the stored preferences, one key per field. A key not stored reads as the
 // starting value.

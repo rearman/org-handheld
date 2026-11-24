@@ -19,6 +19,20 @@ class Storage(private val resolver: ContentResolver) {
 	fun read(uri: Uri): String =
 		(resolver.openInputStream(uri) ?: throw FileNotFoundException(uri.toString())).use { it.readBytes().toString(Charsets.UTF_8) }
 
+	// The whole text of a document written in one stream, the old bytes truncated ("wt"), as UTF-8
+	// (DESIGN.md section 4 rule 6).
+	fun write(uri: Uri, text: String) {
+		(resolver.openOutputStream(uri, "wt") ?: throw FileNotFoundException(uri.toString())).use { it.write(text.toByteArray(Charsets.UTF_8)) }
+	}
+
+	// A new, empty document named [name] in the folder [folder], or null when the provider refuses. The
+	// generic type keeps the name as given, where a text type could gain a ".txt".
+	fun create(folder: Folder, name: String): Uri? {
+		val tree = Uri.parse(folder.uri)
+		val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+		return DocumentsContract.createDocument(resolver, parent, "application/octet-stream", name)
+	}
+
 	private fun children(tree: Uri, id: String): List<Doc> {
 		val uri = DocumentsContract.buildChildDocumentsUriUsingTree(tree, id)
 		val out = ArrayList<Doc>()

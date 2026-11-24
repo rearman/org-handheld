@@ -7,10 +7,11 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
-// One line of the agenda: the entry, the time span at which it shows on its day (none for an untimed
+// One line of the agenda: the file // One line of the agenda: the entry, the time span the entry, the time span at which it shows on its day (none for an untimed
 // one or in the todo list), its priority's value, where a smaller value ranks higher, & Org's leaders
 // ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:").
 data class AgendaRow(
+	val file: OrgFile,
 	val entry: Entry,
 	val time: LocalTime?,
 	val priority: Int,
@@ -30,7 +31,7 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 		// The span from [from], which starts at today as org-agenda-start-on-weekday nil starts it. The
 		// todo list sorts as Org's todo strategy does (priority-down, then file order).
 		fun of(files: List<OrgFile>, from: LocalDate, today: LocalDate): Agenda {
-			val todos = files.flatMap { file -> file.entries.filter { it.inTodoList }.map { AgendaRow(it, null, priority(it, file)) } }
+			val todos = files.flatMap { file -> file.entries.filter { it.inTodoList }.map { AgendaRow(file, it, null, priority(it, file)) } }
 			return Agenda(days(files, from, from.plusDays(SPAN - 1), today), todos.sortedBy { it.priority })
 		}
 
@@ -49,7 +50,7 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 					val priority = priority(e, file)
 					for (date in e.agendaDates(from, to, today, warningDays)) {
 						val stamp = stampOn(e, date)
-						byDate[date]?.add(AgendaRow(e, stamp?.start, priority, leaders(e, date, today, warningDays), stamp?.end))
+						byDate[date]?.add(AgendaRow(file, e, stamp?.start, priority, leaders(e, date, today, warningDays), stamp?.end))
 					}
 				}
 			}

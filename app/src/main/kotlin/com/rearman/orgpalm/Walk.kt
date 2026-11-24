@@ -43,8 +43,19 @@ class FileCache<K> {
 	@Volatile
 	private var held: Map<K, Held> = emptyMap()
 
-	// The files in the order of the last refresh.
-	val files: List<OrgFile> get() = held.values.map { it.file }
+	// The files w/ their keys, in the order of the last refresh.
+	val files: List<Pair<K, OrgFile>> get() = held.map { (key, h) -> key to h.file }
+
+	// Drops [key], so that the next refresh reads it again: after the app writes the file, whose size &
+	// time may not change at the provider's resolution.
+	fun forget(key: K) {
+		held = held - key
+	}
+
+	// Drops every file, so that the next refresh reads all again: after a change of the settings.
+	fun clear() {
+		held = emptyMap()
+	}
 
 	// Brings the cache to [found]: reads a file that is new or whose size or time changed, keeps the
 	// rest as they are, & drops a file that the walk no longer found.

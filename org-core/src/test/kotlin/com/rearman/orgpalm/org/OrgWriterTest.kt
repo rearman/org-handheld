@@ -455,4 +455,21 @@ class OrgWriterTest {
 		val changed = target.replace(unfiled.headingLine, unfiled.headingLine + " box")
 		assertEquals(WriteResult.Conflict, writer.refileIn(changed, unfiled, subtree))
 	}
+
+	// The form asks for a note where the writer logs one: on entry to WAITING(w@/!) or BELAYED(b@), not
+	// to DONE(d!) or on leaving WAITING (!); on a repeat, per org-log-repeat.
+	@Test
+	fun noteAskedWhereOrgLogsOne() {
+		val text = "* TODO A\n* WAITING B\n* TODO C\n<2026-11-23 Mon +1w>\n"
+		val file = OrgFile.parse("", text, OrgSettings.STARTING)
+		val (a, b, c) = file.document.headings
+		assertEquals(true, writer.asksNote(file, a, "WAITING"))
+		assertEquals(true, writer.asksNote(file, a, "BELAYED"))
+		assertEquals(false, writer.asksNote(file, a, "DONE"))
+		assertEquals(false, writer.asksNote(file, b, "NEXT"))
+		assertEquals(false, writer.asksNote(file, c, "DONE"))
+		val noteRepeat = OrgSettings.STARTING.copy(logRepeat = LogMode.NOTE)
+		val repeating = OrgFile.parse("", text, noteRepeat)
+		assertEquals(true, Fixtures.writer(noteRepeat).asksNote(repeating, repeating.document.headings[2], "DONE"))
+	}
 }
