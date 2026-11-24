@@ -117,7 +117,7 @@ Every heading, at any level & in any file, is an `Entry`, & every entry is edita
 | body          | the section text after the planning line & the drawers, up to the first child heading, as Org holds it |
 | category      | the inherited `:CATEGORY:` (below)                                                                     |
 
-**Inheritance** follows Org. Tags inherit as `org-use-tag-inheritance` `t` gives them: an entry's inherited tags are the file's `#+FILETAGS:` & the tags of its ancestors, in that order, w/o duplicates, less the tags of `org-tags-exclude-from-inheritance`. The category is `:CATEGORY:` of the entry or its nearest ancestor that has one, else the file's last `#+CATEGORY:` line, else the file name w/o `.org`, as `org-get-category` gives it. `:private:`, own or inherited, marks a private entry.
+**Inheritance** follows Org. Tags inherit as `org-use-tag-inheritance` `t` gives them: an entry's inherited tags are the file's `#+FILETAGS:` & the tags of its ancestors, in that order, w/o duplicates, less the tags of `org-tags-exclude-from-inheritance`. The category is `:CATEGORY:` of the entry or its nearest ancestor that has one, else the file's last `#+CATEGORY:` line, else the file name w/o `.org`, as `org-get-category` gives it.
 
 **Agenda inclusion** follows Org's agenda: an entry shows on a date through its `SCHEDULED:`, its `DEADLINE:`, & any active timestamp in its own text (heading or body, but not its children's). A date range (`<...>--<...>`) shows on every day from its start to its end. A diary sexp shows on the dates it gives, for the forms `diary-anniversary`, `diary-block`, `diary-cyclic`, `diary-date`, & `diary-float`; any other sexp shows on no date & marks its entry in the outline browser. Every open TODO entry shows in the todo list, dated or not. Entries under a `COMMENT` heading or a heading tagged `:ARCHIVE:` show nowhere in the agenda, as `org-agenda-skip-comment-trees` & `org-agenda-skip-archived-trees` give it.
 
@@ -138,7 +138,7 @@ Bring the oil analysis kit.
 :PROPERTIES:
 :CATEGORY: Work
 :END:
-** TODO [#A] Order VFD spares                                       :private:
+** TODO [#A] Order VFD spares                                          :site:
 DEADLINE: <2026-11-25 Wed> SCHEDULED: <2026-11-23 Mon>
 Two ACS580s, frame R3.
 ** Frick rep contact

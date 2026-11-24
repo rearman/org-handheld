@@ -30,9 +30,7 @@ class RecordsTest {
 		assertEquals(15, pmEvent.warnMinutes)
 		assertEquals("<2026-11-23 Mon 09:00-10:00>\nBring the oil analysis kit.", pm.body)
 		assertEquals("Bring the oil analysis kit.", pmEvent.body)
-		assertFalse(pm.isPrivate)
 		val office = calendar[1]
-		assertTrue(office.isPrivate)
 		assertNull(office.event!!.timestamps.single().start)
 		assertNull(office.event!!.warnMinutes)
 		assertEquals("", office.event!!.body)
@@ -101,7 +99,6 @@ class RecordsTest {
 		assertEquals(LocalDate.of(2026, 11, 25), vfd.deadline?.date)
 		assertEquals(LocalDate.of(2026, 11, 23), vfd.scheduled?.date)
 		assertNull(vfd.closed)
-		assertTrue(vfd.isPrivate)
 		assertEquals("Two ACS580s, frame R3.", vfd.body)
 		val io = todo.entries.single { it.property("ID") == Fixtures.IO_LIST }
 		assertEquals("DONE", io.state)
@@ -212,8 +209,6 @@ class RecordsTest {
 		val electrical = outline.at("**** Electrical")
 		assertEquals(listOf("mech"), electrical.tags)
 		assertEquals(listOf("plant"), electrical.inheritedTags)
-		val child = OrgFile.parse("", "* Home :private:\n** Plumber\n").entries[1]
-		assertTrue(child.isPrivate)
 	}
 
 	// Stamp lines read at any level, and a range stays body text w/o an event.

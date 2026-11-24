@@ -59,8 +59,6 @@ data class Entry(
 ) {
 	val allTags: List<String> get() = inheritedTags + OrgFile.keepLast(tags)
 
-	val isPrivate: Boolean get() = PRIVATE in tags || PRIVATE in inheritedTags
-
 	// The value of a property; Org compares keys w/o regard to case.
 	fun property(key: String): String? = properties.entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
 
@@ -88,8 +86,6 @@ data class Entry(
 	// Every open TODO entry, dated or not, outside a COMMENT or :ARCHIVE: subtree.
 	val inTodoList: Boolean get() = open && inAgenda
 }
-
-const val PRIVATE = "private"
 
 // One sequence of TODO keywords, as one #+TODO: line gives it: [names] in order, the [done] ones among
 // them, [type] for a #+TYP_TODO: line, and the log marks of each keyword that has any.

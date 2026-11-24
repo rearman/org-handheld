@@ -113,7 +113,7 @@ class OrgWriterTest {
 	)
 
 	@Test
-	fun eventTagged() = calendar("event-tags", Fixtures.PM, FieldChange.Tags(listOf(PRIVATE)))
+	fun eventTagged() = calendar("event-tags", Fixtures.PM, FieldChange.Tags(listOf("private")))
 
 	@Test
 	fun eventTitleChanged() = calendar("event-title", Fixtures.OFFICE, FieldChange.Title("Office closed for Thanksgiving"))
@@ -163,7 +163,7 @@ class OrgWriterTest {
 		val text = Fixtures.text("todo.org")
 		val same = listOf(
 			FieldChange.Title("Order VFD spares"), FieldChange.State("TODO"), FieldChange.Priority("A"),
-			FieldChange.Tags(listOf(PRIVATE)), FieldChange.Deadline(ts("<2026-11-25 Wed>")),
+			FieldChange.Tags(listOf("private")), FieldChange.Deadline(ts("<2026-11-25 Wed>")),
 			FieldChange.Scheduled(ts("<2026-11-23 Mon>")), FieldChange.Body("Two ACS580s, frame R3."),
 		)
 		assertEquals(text, written(writer.apply(text, Edit.Update(Fixtures.anchor(text, Fixtures.VFD), same))))
