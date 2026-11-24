@@ -85,7 +85,7 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 		// The timed stamp that puts [e] on [d]: its SCHEDULED, its DEADLINE, or an active stamp of its
 		// text, in that order. A range or a sexp gives none, nor does a missed or coming date shown on
 		// today, as in Org.
-		private fun stampOn(e: Entry, d: LocalDate): Timestamp? {
+		fun stampOn(e: Entry, d: LocalDate): Timestamp? {
 			e.scheduled?.takeIf { it.start != null && it.planningDates(d, d, scheduled = true).isNotEmpty() }?.let { return it }
 			e.deadline?.takeIf { it.start != null && it.planningDates(d, d, scheduled = false).isNotEmpty() }?.let { return it }
 			return e.activeStamps.firstOrNull { it.start != null && it.occurrences(d, d).isNotEmpty() }

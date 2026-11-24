@@ -84,6 +84,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 			for (folder in stores.folders.first()) found.putAll(storage.orgFiles(folder))
 			cache.refresh(found) { uri, f -> OrgFile.parse(f.path, storage.read(uri), settings) }
 			loadedFlow.value = cache.files.map { (uri, file) -> Loaded(uri, file) }
+			Alarms.schedule(getApplication<Application>(), loadedFlow.value.map { it.file })
 			errorFlow.value = null
 		} catch (e: CancellationException) {
 			throw e

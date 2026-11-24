@@ -1,5 +1,7 @@
 package com.rearman.orgpalm
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -32,6 +34,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +87,16 @@ private fun App(model: AppModel = viewModel()) {
 	var capturing by remember { mutableStateOf(false) }
 	var filter by rememberSaveable { mutableStateOf<String?>(null) }
 	val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { model.addFolder(it) } }
+
+	// Alarms post through a notification, which API 33 & up asks the user to allow.
+	val context = LocalContext.current
+	val notify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+	LaunchedEffect(Unit) {
+		val asks = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+		if (asks && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+			notify.launch(Manifest.permission.POST_NOTIFICATIONS)
+		}
+	}
 
 	// On start & on each return to the front.
 	LifecycleEventEffect(Lifecycle.Event.ON_START) { model.walk() }
