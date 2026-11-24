@@ -5,11 +5,11 @@ org-palm is an Android front end for any org file in the folders the user picks,
 ## Stack
 
 * `:org-core`: a pure Kotlin JVM module (JDK 17, KGP 2.2.21) w/ no runtime dependency. It holds the lossless parser (`OrgDocument`), the timestamps & their repeats (`Timestamp`), the entries & files (`Records.kt`), the mirrored Emacs settings (`OrgSettings`), the diary sexps (`DiarySexp`), the span writer (`OrgWriter`), the form text written as typed (`FormText`), & the anchor that finds an edited heading in fresh text (`Anchor`), all in `com.rearman.orgpalm.org`. Tests are JUnit 4.
-* `:app` (phase 2): Kotlin, Jetpack Compose, & Material 3 (AndroidX), minSdk 26.
+* `:app`: Kotlin, Jetpack Compose, & Material 3 (AndroidX), minSdk 26, built by AGP 9.2.0 w/ its built-in Kotlin. It holds the folder walk & the file cache (`Walk.kt`), the SAF access (`Storage.kt`), the stored settings & folders (`Stores.kt`, DataStore), & the screens, in `com.rearman.orgpalm`.
 
 ## Building & testing
 
-This machine has no JDK, Gradle, or Android SDK. Tests run in CI alone (`.github/workflows/build.yml`: `gradle :org-core:test` on JDK 17 & Gradle 9.4.1); verify a change by reading it.
+This machine has no JDK, Gradle, or Android SDK. Tests run in CI alone (`.github/workflows/build.yml`: `gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`, on JDK 17 & Gradle 9.4.1); verify a change by reading it.
 
 ## Fixtures
 

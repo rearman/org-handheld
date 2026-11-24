@@ -15,5 +15,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "org-palm"
-// The org parser, record model, and writer: a pure JVM module. The Android app (:app) joins in phase 2.
-include(":org-core")
+// The org parser, record model, and writer: a pure JVM module; the Android app (:app) builds on it.
+include(":org-core", ":app")

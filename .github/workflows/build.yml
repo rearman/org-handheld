@@ -1,7 +1,8 @@
 name: Build
 
-# Runs the tests of :org-core, the Org parser and writer. The fixtures that the tests compare against
-# come from tools/make-fixtures.el, which runs on a desktop w/ Emacs, not here.
+# Runs the tests of :org-core (the Org parser and writer) and of :app, and builds the debug app. The
+# fixtures that the tests compare against come from tools/make-fixtures.el, which runs on a desktop
+# w/ Emacs, not here.
 on:
   push:
   workflow_dispatch:
@@ -27,13 +28,19 @@ jobs:
       - name: Test org-core
         run: gradle :org-core:test --stacktrace
 
+      # The Ubuntu runner carries an Android SDK; :app:test runs the walk's tests on the JVM.
+      - name: Build and test app
+        run: gradle :app:test :app:assembleDebug --stacktrace
+
       # The HTML and XML reports show which fixture a failing test compared.
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: org-core-test-reports
+          name: test-reports
           path: |
             org-core/build/reports/tests
             org-core/build/test-results
+            app/build/reports/tests
+            app/build/test-results
           if-no-files-found: ignore
