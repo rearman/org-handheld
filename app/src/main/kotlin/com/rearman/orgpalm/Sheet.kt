@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -405,9 +406,9 @@ private fun EventFields(form: Form) {
 // The days of the week from Sunday, as calendar-week-start-day 0 orders them.
 private val WEEK = listOf(DayOfWeek.SUNDAY) + DayOfWeek.entries.filter { it != DayOfWeek.SUNDAY }
 
-// The file & heading picker for capture & refile (PLAN.md phase 4; the outline browser replaces it in
-// phase 7): each file, then its headings indented by level. W/ [onCreate], a missing capture file can
-// be created in a folder, on request.
+// The file & heading picker for capture & refile: the outline tree (PLAN.md phase 7), where a tap on a
+// file's name picks its top level & a tap on a heading picks the heading. W/ [onCreate], a missing
+// capture file can be created in a folder, on request.
 @Composable
 fun PlacePicker(model: AppModel, onCreate: Boolean, onDismiss: () -> Unit, onPick: (Place) -> Unit) {
 	val loaded by model.loaded.collectAsStateWithLifecycle()
@@ -418,7 +419,7 @@ fun PlacePicker(model: AppModel, onCreate: Boolean, onDismiss: () -> Unit, onPic
 		confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
 		title = { Text("Pick a place") },
 		text = {
-			Column(Modifier.verticalScroll(rememberScrollState())) {
+			Column {
 				if (onCreate && loaded.none { it.file.path == target.file }) {
 					for (folder in model.folders.value) {
 						TextButton(onClick = { scope.launch { model.createFile(folder, target.file.substringAfterLast('/')) } }) {
@@ -426,12 +427,7 @@ fun PlacePicker(model: AppModel, onCreate: Boolean, onDismiss: () -> Unit, onPic
 						}
 					}
 				}
-				for ((_, file) in loaded) {
-					TextButton(onClick = { onPick(Place(file, null)) }) { Text(file.path, style = MaterialTheme.typography.titleSmall) }
-					for (e in file.entries) {
-						TextButton(onClick = { onPick(Place(file, e)) }, Modifier.padding(start = (12 * e.level).dp)) { Text(e.title) }
-					}
-				}
+				OutlineTree(loaded.map { it.file }, Modifier.heightIn(max = 480.dp), { onPick(Place(it, null)) }) { file, e -> onPick(Place(file, e)) }
 			}
 		},
 	)

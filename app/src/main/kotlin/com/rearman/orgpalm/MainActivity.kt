@@ -123,7 +123,11 @@ private fun App(model: AppModel = viewModel()) {
 			} else {
 				val open = { row: AgendaRow -> editing = Place(row.file, row.entry) }
 				val saved = Filters.STARTING.firstOrNull { it.name == filter }
-				if (saved != null) FilterView(files, saved, open) else Timeline(files, level, { level = it }, focus, { focus = it }, open)
+				when {
+					filter == OUTLINE -> OutlineTree(files, Modifier.fillMaxSize(), null) { file, e -> editing = Place(file, e) }
+					saved != null -> FilterView(files, saved, open)
+					else -> Timeline(files, level, { level = it }, focus, { focus = it }, open)
+				}
 			}
 		}
 	}
@@ -210,13 +214,17 @@ fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) ->
 	}
 }
 
-// The overflow menu: the timeline, or a saved filter by name.
+// The view of the outline browser in the overflow menu.
+private const val OUTLINE = "Outline"
+
+// The overflow menu: the timeline, the outline browser, or a saved filter by name.
 @Composable
 private fun ViewsMenu(current: String?, onPick: (String?) -> Unit) {
 	var open by remember { mutableStateOf(false) }
 	TextButton(onClick = { open = true }) { Text(current ?: "Timeline") }
 	DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
 		DropdownMenuItem(text = { Text("Timeline") }, onClick = { onPick(null); open = false })
+		DropdownMenuItem(text = { Text(OUTLINE) }, onClick = { onPick(OUTLINE); open = false })
 		for (f in Filters.STARTING) DropdownMenuItem(text = { Text(f.name) }, onClick = { onPick(f.name); open = false })
 	}
 }
