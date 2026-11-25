@@ -51,6 +51,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,8 +74,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun OrgPalmTheme(content: @Composable () -> Unit) {
-	val dark = isSystemInDarkTheme()
+private fun OrgPalmTheme(model: AppModel = viewModel(), content: @Composable () -> Unit) {
+	// Until the store is read, the theme is the phone's, so a picked one can show a frame late.
+	val theme by model.theme.collectAsStateWithLifecycle()
+	val dark = when (theme) {
+		Theme.SYSTEM -> isSystemInDarkTheme()
+		Theme.LIGHT -> false
+		Theme.DARK -> true
+	}
 	val context = LocalContext.current
 	val colors = when {
 		Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -216,9 +224,13 @@ private fun Header(text: String) {
 @Composable
 fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val e = row.entry
-	val muted = MaterialTheme.colorScheme.onSurfaceVariant
 	val colors = MaterialTheme.colorScheme
 	val (fill, ink) = if (row.time != null) colors.primaryContainer to colors.onPrimaryContainer else colors.secondaryContainer to colors.onSecondaryContainer
+	// Emacs's default org-todo & org-done faces: Red1 & ForestGreen on a light background, Pink &
+	// PaleGreen on a dark one. The leaders take the org-todo color too.
+	val dark = colors.surface.luminance() < 0.5f
+	val todoInk = if (dark) Color(0xFFFFC0CB) else Color(0xFFFF0000)
+	val doneInk = if (dark) Color(0xFF98FB98) else Color(0xFF228B22)
 	CompositionLocalProvider(LocalContentColor provides ink) {
 		Column(
 			Modifier
@@ -230,17 +242,17 @@ fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) 
 				.padding(horizontal = 8.dp, vertical = 4.dp),
 		) {
 			Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-				row.time?.let { Text(TIME.format(it), color = muted) }
-				for (leader in row.leaders) Text(leader, color = MaterialTheme.colorScheme.error)
-				e.state?.let { Text(it, fontWeight = FontWeight.Bold, color = if (e.done) muted else MaterialTheme.colorScheme.tertiary) }
+				row.time?.let { Text(TIME.format(it)) }
+				for (leader in row.leaders) Text(leader, color = todoInk)
+				e.state?.let { Text(it, fontWeight = FontWeight.Bold, color = if (e.done) doneInk else todoInk) }
 				e.priority?.let { Text("[#$it]", color = MaterialTheme.colorScheme.secondary) }
 				Text(row.title, Modifier.weight(1f))
 			}
 			Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-				Text(e.category, style = MaterialTheme.typography.labelMedium, color = muted)
+				Text(e.category, style = MaterialTheme.typography.labelMedium)
 				if (e.tags.isNotEmpty()) Text(e.tags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium)
 				if (e.inheritedTags.isNotEmpty()) {
-					Text(e.inheritedTags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium, color = muted)
+					Text(e.inheritedTags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium)
 				}
 			}
 		}

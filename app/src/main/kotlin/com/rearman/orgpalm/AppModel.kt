@@ -61,6 +61,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 	val settings: StateFlow<OrgSettings> = stores.settings.stateIn(viewModelScope, SharingStarted.Eagerly, OrgSettings.STARTING)
 	val captureTarget: StateFlow<CaptureTarget> = stores.captureTarget.stateIn(viewModelScope, SharingStarted.Eagerly, CaptureTarget())
 	val filters: StateFlow<List<SavedFilter>> = stores.filters.stateIn(viewModelScope, SharingStarted.Eagerly, Filters.STARTING)
+	val theme: StateFlow<Theme> = stores.theme.stateIn(viewModelScope, SharingStarted.Eagerly, Theme.SYSTEM)
 
 	private val loadedFlow = MutableStateFlow<List<Loaded>>(emptyList())
 	val loaded: StateFlow<List<Loaded>> = loadedFlow
@@ -121,6 +122,10 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 				withContext(Dispatchers.IO) { walkLocked() }
 			}
 		}
+	}
+
+	fun setTheme(theme: Theme) {
+		viewModelScope.launch { stores.setTheme(theme) }
 	}
 
 	fun saveFilters(filters: List<SavedFilter>) {

@@ -72,7 +72,15 @@ class Stores(private val context: Context) {
 		context.store.edit { it[FILTERS] = FilterCodec.write(filters) }
 	}
 
+	// The app's light or dark look, the phone's until the user picks one.
+	val theme: Flow<Theme> = context.store.data.map { p -> p[THEME]?.let { runCatching { Theme.valueOf(it) }.getOrNull() } ?: Theme.SYSTEM }
+
+	suspend fun setTheme(theme: Theme) {
+		context.store.edit { it[THEME] = theme.name }
+	}
+
 	private companion object {
+		val THEME = stringPreferencesKey("theme")
 		val FILTERS = stringPreferencesKey("filters")
 		val CAPTURE_FILE = stringPreferencesKey("capture_file")
 		val CAPTURE_HEADING = stringPreferencesKey("capture_heading")
@@ -83,6 +91,8 @@ class Stores(private val context: Context) {
 		const val RECURSIVE = "R "
 	}
 }
+
+enum class Theme { SYSTEM, LIGHT, DARK }
 
 // The default place of a new entry (DESIGN.md section 3, Capture & refile): a file by its path below
 // its folder, & a heading by its outline path & title, or the top level of the file for none. It starts

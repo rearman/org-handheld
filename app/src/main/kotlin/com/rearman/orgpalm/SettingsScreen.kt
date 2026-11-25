@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rearman.orgpalm.org.LogMode
 import com.rearman.orgpalm.org.OrgSettings
 import com.rearman.orgpalm.org.Position
@@ -73,6 +74,15 @@ fun SettingsScreen(model: AppModel, folders: List<Folder>, onAddFolder: () -> Un
 			}
 		}
 		OutlinedButton(onClick = onAddFolder) { Text("Add folder") }
+		HorizontalDivider()
+
+		// The theme applies at once, as the folder switches do, w/o Save.
+		val theme by model.theme.collectAsStateWithLifecycle()
+		val themes = mapOf(Theme.SYSTEM to "System", Theme.LIGHT to "Light", Theme.DARK to "Dark")
+		Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+			Text("Theme", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+			Choice("", themes[theme], themes.values.toList()) { picked -> themes.entries.firstOrNull { it.value == picked }?.let { model.setTheme(it.key) } }
+		}
 		HorizontalDivider()
 
 		Text("Capture", style = MaterialTheme.typography.titleMedium)
