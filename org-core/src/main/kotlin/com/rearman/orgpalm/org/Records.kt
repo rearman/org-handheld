@@ -540,6 +540,12 @@ internal class AgendaText(
 			val ranges = ArrayList<ClosedRange<LocalDate>>()
 			val sexps = ArrayList<DiarySexp>()
 			for (text in texts) {
+				// A diary sexp line holds its sexp & the diary text, & no timestamp.
+				val line = DiarySexp.lineSexp(text)
+				if (line != null) {
+					DiarySexp.parse(line)?.let { sexps.add(it) }
+					continue
+				}
 				var rest = text
 				for (m in RANGE.findAll(text)) {
 					val a = Timestamp.parse(m.groupValues[1])

@@ -4,10 +4,11 @@ import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-// A diary sexp of a timestamp (<%%(...)>) in one of the forms the app models (DESIGN.md section 3):
-// diary-anniversary, diary-block, diary-cyclic, diary-date, and diary-float, w/ their dates in the
-// american order (month, day, year) of calendar-date-style's default. parse() gives null for any other
-// sexp, which shows on no date.
+// A diary sexp, of a timestamp (<%%(...)>) or of a line that starts w/ one (%%(...) text), in one of
+// the forms the app models (DESIGN.md section 3): diary-anniversary, diary-block, diary-cyclic,
+// diary-date, and diary-float, w/ their dates in the american order (month, day, year) of
+// calendar-date-style's default, and org-anniversary, w/ its date in the iso order (year, month, day).
+// parse() gives null for any other sexp, which shows on no date.
 class DiarySexp private constructor(private val test: (LocalDate) -> Boolean) {
 	fun matches(date: LocalDate): Boolean = test(date)
 
@@ -36,6 +37,30 @@ class DiarySexp private constructor(private val test: (LocalDate) -> Boolean) {
 	companion object {
 		// The text of a sexp timestamp: group 1 is the sexp w/o its outer parentheses.
 		internal val STAMP = Regex("""<%%\(([^>\n]*)\)>""")
+
+		// A diary sexp line, as org-agenda-get-sexps finds it: "%%(" at the start of the line, after an
+		// optional "&".
+		private val LINE = Regex("""&?%%\(.*""", RegexOption.DOT_MATCHES_ALL)
+
+		// The sexp of a diary sexp line w/o its outer parentheses, up to the parenthesis that closes it,
+		// or null for any other line or a sexp left open.
+		fun lineSexp(line: String): String? {
+			if (!LINE.matches(line)) return null
+			val open = line.indexOf('(')
+			var depth = 0
+			var quoted = false
+			for (i in open until line.length) {
+				val c = line[i]
+				when {
+					c == '"' -> quoted = !quoted
+					quoted -> {}
+					c == '(' -> depth++
+					c == ')' -> if (--depth == 0) return line.substring(open + 1, i)
+				}
+			}
+			return null
+		}
+
 		private val TOKEN = Regex(""""[^"]*"|'\([^()]*\)|[^\s()"']+""")
 		private val INT = Regex("""-?\d+""")
 
@@ -100,13 +125,14 @@ class DiarySexp private constructor(private val test: (LocalDate) -> Boolean) {
 					"diary-anniversary" -> {
 						val mm = num(a.getOrNull(0))
 						val dd = num(a.getOrNull(1))
-						val yy = num(a.getOrNull(2))
-						if (!fits(a, 2, 2) || mm == null || dd == null) null else DiarySexp { t ->
-							val diff = if (yy == null) 100 else t.year - yy
-							// The anniversary of February 29 is March 1 in a common year.
-							val leapDay = mm == 2 && dd == 29 && !t.isLeapYear
-							diff > 0 && t.monthValue == (if (leapDay) 3 else mm) && t.dayOfMonth == (if (leapDay) 1 else dd)
-						}
+						if (!fits(a, 2, 2) || mm == null || dd == null) null else anniversary(mm, dd, num(a.getOrNull(2)))
+					}
+					// org-anniversary binds calendar-date-style to iso & calls diary-anniversary.
+					"org-anniversary" -> {
+						val yy = num(a.getOrNull(0))
+						val mm = num(a.getOrNull(1))
+						val dd = num(a.getOrNull(2))
+						if (!fits(a, 3, 1) || yy == null || mm == null || dd == null) null else anniversary(mm, dd, yy)
 					}
 					"diary-cyclic" -> {
 						val n = a.take(4).map { num(it) }
@@ -132,6 +158,15 @@ class DiarySexp private constructor(private val test: (LocalDate) -> Boolean) {
 			} catch (e: DateTimeException) {
 				null
 			}
+		}
+
+		// diary-anniversary of month [mm], day [dd], & year [yy]: each date after that year (in every year
+		// w/o one) whose month & day match.
+		private fun anniversary(mm: Int, dd: Int, yy: Int?): DiarySexp = DiarySexp { t ->
+			val diff = if (yy == null) 100 else t.year - yy
+			// The anniversary of February 29 is March 1 in a common year.
+			val leapDay = mm == 2 && dd == 29 && !t.isLeapYear
+			diff > 0 && t.monthValue == (if (leapDay) 3 else mm) && t.dayOfMonth == (if (leapDay) 1 else dd)
 		}
 
 		// diary-float on [t]: some month of [month] near t whose base date (DAY, else the first of the

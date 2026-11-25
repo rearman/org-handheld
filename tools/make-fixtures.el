@@ -462,6 +462,9 @@ NAME-source.expected.org and NAME-target.expected.org."
 		(:timestamp "<%%(diary-anniversary 2 29 2020)>") (:timestamp "<%%(diary-anniversary 12 25)>")
 		(:timestamp "<%%(diary-block 11 28 2026 12 2 2026)>") (:timestamp "<%%(diary-cyclic 10 11 20 2026)>")
 		(:timestamp "<%%(diary-date 12 '(1 15) t)>") (:timestamp "<%%(diary-date t 13 2027)>")
+		;; org-anniversary takes the iso order, as a timestamp & as a diary sexp line w/ its text.
+		(:timestamp "<%%(org-anniversary 1970 1 15)>") (:sexp "%%(org-anniversary 2000 6 10) Ann turns %d")
+		(:sexp "%%(org-anniversary 2010 08 05) Bob turns %d") (:sexp "%%(org-anniversary 2020 2 29) Leap turns %d")
 		(:timestamp "<2026-11-30 Mon>--<2026-12-03 Thu>") (:timestamp "<2026-12-31 Thu 22:00>--<2027-01-01 Fri 02:00>")
 		;; Stamps in a property drawer and another drawer count; in a comment line, a src block, or a
 		;; fixed-width line they do not; in a quote block they do.
