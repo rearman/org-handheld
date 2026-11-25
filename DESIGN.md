@@ -13,7 +13,7 @@ An Android front end for org-mode data. The phone shows calendars & a dynamic ag
 
 ### B. Agenda-first planner, the zoomable agenda (recommended)
 
-One home screen: a timeline that zooms through four levels, Agenda, Day, Week, & Month. A row of chips picks the level, & a pinch steps it: pinch in from Agenda to Day, Week, & Month, & spread out to return. The date in view stays centered across a change of level. A floating button opens a bottom-sheet form for a new record; a tap on a record opens the same sheet to edit it.
+One home screen: a timeline that zooms through four levels, Agenda, Day, Week, & Month. A row of chips picks the level, & a pinch steps it: pinch in from Agenda to Day, Week, & Month, & spread out to return. In Day, Week, & Month, a swipe left steps to the next day, week, or month, & a swipe right to the previous one. The date in view stays centered across a change of level. A floating button opens a bottom-sheet form for a new record; a tap on a record opens the same sheet to edit it.
 
 ```
 ┌──────────────────────────────────┐

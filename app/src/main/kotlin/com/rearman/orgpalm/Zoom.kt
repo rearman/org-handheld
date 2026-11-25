@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -65,6 +66,9 @@ private fun weekOf(d: LocalDate): LocalDate = d.with(TemporalAdjusters.previousO
 private const val PINCH_IN = 0.75f
 private const val PINCH_OUT = 1.33f
 
+// The width that a one-finger swipe must cross to step the date in Day, Week, & Month.
+private val SWIPE = 64.dp
+
 // The height of one hour in the Day & Week grids, & the hour that a grid opens at.
 private val HOUR = 48.dp
 private const val FIRST_HOUR = 7
@@ -106,7 +110,10 @@ fun Timeline(
 				if (level.ordinal < levels.size - 1) onLevel(levels[level.ordinal + 1])
 			}, {
 				if (level.ordinal > 0) onLevel(levels[level.ordinal - 1])
-			}),
+			}).then(
+				if (level == Level.AGENDA) Modifier
+				else Modifier.swipe(level to focus, { onFocus(step(level, focus, -1)) }, { onFocus(step(level, focus, 1)) }),
+			),
 		) {
 			when (level) {
 				Level.AGENDA -> AgendaList(remember(files, focus, today) { Agenda.of(files, focus, today) }, onOpen)
@@ -166,6 +173,22 @@ private fun Modifier.pinch(key: Any, closer: () -> Unit, wider: () -> Unit): Mod
 				}
 			}
 		} while (event.changes.any { it.pressed })
+	}
+}
+
+// One finger that ends a horizontal drag more than SWIPE to the right calls [back], or to the left
+// calls [ahead]. The children see the events first, so a vertical scroll below keeps its own drags,
+// & a pinch, which consumes the events, cancels the drag.
+private fun Modifier.swipe(key: Any, back: () -> Unit, ahead: () -> Unit): Modifier = pointerInput(key) {
+	var dx = 0f
+	detectHorizontalDragGestures(
+		onDragStart = { dx = 0f },
+		onDragEnd = {
+			if (dx > SWIPE.toPx()) back() else if (dx < -SWIPE.toPx()) ahead()
+		},
+	) { change, amount ->
+		change.consume()
+		dx += amount
 	}
 }
 
