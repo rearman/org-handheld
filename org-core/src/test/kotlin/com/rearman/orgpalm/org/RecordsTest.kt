@@ -239,7 +239,7 @@ class RecordsTest {
 	@Test
 	fun agendaDatesMatchOrg() {
 		val rows = Fixtures.text("agenda.txt").lines().drop(1).filter { it.isNotEmpty() }
-		assertEquals(22, rows.size)
+		assertEquals(24, rows.size)
 		val from = LocalDate.of(2026, 11, 1)
 		for (row in rows) {
 			val (text, dates) = row.split('\t')

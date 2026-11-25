@@ -466,6 +466,8 @@ NAME-source.expected.org and NAME-target.expected.org."
 		(:timestamp "<%%(org-anniversary 1970 1 15)>") (:sexp "%%(org-anniversary 2000 6 10) Ann turns %d")
 		(:sexp "%%(org-anniversary 2010 08 05) Bob turns %d") (:sexp "%%(org-anniversary 2020 2 29) Leap turns %d")
 		(:timestamp "<2026-11-30 Mon>--<2026-12-03 Thu>") (:timestamp "<2026-12-31 Thu 22:00>--<2027-01-01 Fri 02:00>")
+		;; A range joined by one hyphen or by three, as org-tr-regexp reads it.
+		(:timestamp "<2027-02-08 Mon>-<2027-02-10 Wed>") (:timestamp "<2027-03-08 Mon>---<2027-03-09 Tue>")
 		;; Stamps in a property drawer and another drawer count; in a comment line, a src block, or a
 		;; fixed-width line they do not; in a quote block they do.
 		(:timestamp ":PROPERTIES:\n:WHEN: <2026-12-07 Mon>\n:END:") (:timestamp ":LOGBOOK:\n- Note taken on <2026-12-08 Tue>\n:END:")

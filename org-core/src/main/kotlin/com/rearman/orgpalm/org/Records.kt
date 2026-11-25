@@ -502,7 +502,8 @@ internal class AgendaText(
 	val sexps: List<DiarySexp>,
 ) {
 	companion object {
-		private val RANGE = Regex("""(<\d{4}-\d{2}-\d{2}[^<>\n]*>)--(<\d{4}-\d{2}-\d{2}[^<>\n]*>)""")
+		// A date range, its stamps joined by one to three hyphens, as org-tr-regexp ("--?-?") reads it.
+		private val RANGE = Regex("""(<\d{4}-\d{2}-\d{2}[^<>\n]*>)-{1,3}(<\d{4}-\d{2}-\d{2}[^<>\n]*>)""")
 
 		// A block whose contents hold no timestamp objects for Org's parser.
 		private val VERBATIM_BEGIN = Regex("""[ \t]*#\+BEGIN_(SRC|EXAMPLE|EXPORT|COMMENT)\b.*""", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
