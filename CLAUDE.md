@@ -9,7 +9,7 @@ org-palm is an Android front end for any org file in the folders the user picks,
 
 ## Building & testing
 
-This machine has no JDK, Gradle, or Android SDK. Tests run in CI alone (`.github/workflows/build.yml`: `gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`, on JDK 17 & Gradle 9.4.1); verify a change by reading it.
+This machine has no JDK, Gradle, or Android SDK. Tests run in CI alone (`.github/workflows/build.yml`: `gradle :org-core:test`, then `gradle :app:test :app:assembleDebug`, on JDK 17 & Gradle 9.4.1); verify a change by reading it. Each run uploads the app as `org-handheld.apk`, signed w/ the key in the secrets `ORG_HANDHELD_KEYSTORE` (a base64 PKCS12, alias `org-handheld`) & `ORG_HANDHELD_KEYSTORE_PASSWORD`, its `versionCode` the run number, so that a later APK updates an earlier install.
 
 ## Fixtures
 
