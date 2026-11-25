@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -213,7 +212,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 				}
 			}
 		}
-		Row(Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberScrollState()).padding(start = gutter)) {
+		Row(Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberCenteredScrollState()).padding(start = gutter)) {
 			for (day in days) {
 				Column(Modifier.weight(1f).padding(1.dp)) {
 					for (row in day.rows.filter { it.time == null }) Untimed(row, onOpen, onShow)
@@ -222,7 +221,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 		}
 		HorizontalDivider()
 		val start = with(LocalDensity.current) { (HOUR * FIRST_HOUR).roundToPx() }
-		Row(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState(start))) {
+		Row(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberCenteredScrollState(start))) {
 			Column(Modifier.width(gutter)) {
 				for (h in 0 until 24) {
 					Text("%02d:00".format(h), Modifier.height(HOUR).padding(start = 4.dp), style = MaterialTheme.typography.labelSmall)

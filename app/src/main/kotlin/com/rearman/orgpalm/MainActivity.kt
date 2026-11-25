@@ -146,7 +146,7 @@ private val TIME = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
 fun AgendaList(agenda: Agenda, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
-	LazyColumn(Modifier.fillMaxSize()) {
+	LazyColumn(Modifier.fillMaxSize(), rememberCenteredListState()) {
 		for (day in agenda.days) {
 			item(key = day.date.toString()) {
 				Header("${DAY.format(day.date)}, ${DATE.format(day.date)}")
@@ -200,7 +200,7 @@ private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (Age
 fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val today = LocalDate.now()
 	val blocks = remember(files, filter, today) { filter.blocks.map { Filters.rows(it, files, today) } }
-	LazyColumn(Modifier.fillMaxSize()) {
+	LazyColumn(Modifier.fillMaxSize(), rememberCenteredListState()) {
 		blocks.forEachIndexed { i, b ->
 			item(key = "block$i") { Header(b.block.header) }
 			var last: String? = null

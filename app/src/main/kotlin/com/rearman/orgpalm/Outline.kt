@@ -6,13 +6,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +33,7 @@ private sealed class Line(val key: String) {
 // [bodies] is set, & its children, one level a time: a close closes all below it. A tap on a file's
 // name calls [onFile] (the top level of the file, for the picker), & on a heading [onHeading]; the
 // [+] & [-] marks open & close. [reveal] opens the tree to its heading, & that heading itself, &
-// scrolls it into view.
+// centers it. The open marks & the line at the center outlive a rotation.
 @Composable
 fun OutlineTree(
 	files: List<OrgFile>,
@@ -44,7 +44,7 @@ fun OutlineTree(
 	onHeading: (OrgFile, Entry) -> Unit,
 ) {
 	// Open files & headings, by path & by path & heading line index.
-	val open = remember { mutableStateMapOf<String, Boolean>().apply { reveal?.let { putAll(pathTo(it)) } } }
+	val open = rememberSaveable(saver = OpenSaver) { mutableStateMapOf<String, Boolean>().apply { reveal?.let { putAll(pathTo(it)) } } }
 	val lines = ArrayList<Line>()
 	for (file in files) {
 		val fileKey = file.path
@@ -68,7 +68,7 @@ fun OutlineTree(
 		}
 	}
 	val revealKey = reveal?.heading?.let { "h:${reveal.file.path}#${it.anchor.lineIndex}@" }
-	val state = rememberLazyListState(revealKey?.let { k -> lines.indexOfFirst { it.key.startsWith(k) } }?.coerceAtLeast(0) ?: 0)
+	val state = rememberCenteredListState(revealKey?.let { k -> lines.indexOfFirst { it.key.startsWith(k) } }?.takeIf { it >= 0 })
 	LazyColumn(modifier, state) {
 		for (line in lines) {
 			item(key = line.key) {
@@ -102,6 +102,12 @@ fun OutlineTree(
 		}
 	}
 }
+
+// The open marks, saved as the list of the open keys.
+private val OpenSaver = listSaver<SnapshotStateMap<String, Boolean>, String>(
+	save = { m -> m.filterValues { it }.keys.toList() },
+	restore = { keys -> mutableStateMapOf<String, Boolean>().apply { keys.forEach { put(it, true) } } },
+)
 
 // Closes a file & every heading in it.
 private fun closeFile(open: SnapshotStateMap<String, Boolean>, path: String) {
