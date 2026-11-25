@@ -6,8 +6,9 @@ import java.time.LocalDate
 
 // One block of a saved filter, as one entry of a command in org-agenda-custom-commands gives it: the
 // agenda of [span] days from today, or the entries that match [states], [tags], & [categories] (each
-// empty set matching all), or, w/ [stuck], the stuck projects of org-stuck-projects. [byTag] sorts
-// as tag-up, priority-down, effort-up, under a header per tag.
+// empty set matching all), or, w/ [stuck], the stuck projects of org-stuck-projects. [allTodo] keeps
+// to the entries in an open TODO state, as Org's alltodo block does. [byTag] sorts as tag-up,
+// priority-down, effort-up, under a header per tag.
 data class Block(
 	val header: String,
 	val span: Long = 0,
@@ -16,6 +17,7 @@ data class Block(
 	val categories: Set<String> = emptySet(),
 	val stuck: Boolean = false,
 	val byTag: Boolean = false,
+	val allTodo: Boolean = false,
 )
 
 // A named filter: its blocks, one after another, as Org's agenda shows a composite command.
@@ -38,6 +40,13 @@ object Filters {
 			),
 		),
 		SavedFilter("Contexts", listOf(Block("NEXT by CONTEXT", states = setOf("NEXT"), byTag = true))),
+	)
+
+	// The filters that the menu always offers, after Outline & before the saved ones; the editor
+	// neither shows nor stores them.
+	val BUILT_IN = listOf(
+		SavedFilter("All TODOs", listOf(Block("All TODOs", allTodo = true))),
+		SavedFilter("Stuck projects", listOf(Block("Stuck projects", stuck = true))),
 	)
 
 	// init.el's org-stuck-projects, '("+undertaking/-DONE-BELAYED" ("NEXT" "WAITING") nil ""): a
@@ -67,10 +76,12 @@ object Filters {
 		return BlockRows(block, rows.sortedWith(order).map { lastTag(it.entry) to it })
 	}
 
-	// The tags view & todo list match: a state among [Block.states], a tag (own or inherited, as
-	// org-use-tag-inheritance gives it) among [Block.tags], & a category among [Block.categories].
+	// The tags view & todo list match: an open state if [Block.allTodo], a state among [Block.states],
+	// a tag (own or inherited, as org-use-tag-inheritance gives it) among [Block.tags], & a category
+	// among [Block.categories].
 	private fun matches(block: Block, e: Entry): Boolean =
-		(block.states.isEmpty() || e.state in block.states) &&
+		(!block.allTodo || e.open) &&
+			(block.states.isEmpty() || e.state in block.states) &&
 			(block.tags.isEmpty() || e.allTags.any { it in block.tags }) &&
 			(block.categories.isEmpty() || e.category in block.categories)
 
