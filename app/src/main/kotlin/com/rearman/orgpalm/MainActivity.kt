@@ -112,7 +112,13 @@ private fun App(model: AppModel = viewModel()) {
 	Scaffold(
 		topBar = {
 			TopAppBar(
-				title = { Text(if (settingsShown) "Settings" else "org-palm") },
+				// The level chips sit in the title's place on the timeline, to leave the body more room.
+				title = {
+					when {
+						settingsShown -> Text("Settings")
+						filter == null -> LevelChips(level) { level = it }
+					}
+				},
 				actions = {
 					if (!settingsShown) ViewsMenu(filter, filters) { filter = it; reveal = null }
 					TextButton(onClick = { showSettings = !showSettings }) { Text(if (showSettings) "Done" else "Settings") }

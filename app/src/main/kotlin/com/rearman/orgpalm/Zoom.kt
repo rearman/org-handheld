@@ -6,6 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,8 +83,17 @@ private val TITLE_SHORT = DateTimeFormatter.ofPattern("MMM d")
 private val TITLE_MONTH = DateTimeFormatter.ofPattern("MMMM yyyy")
 private val DAY_SHORT = DateTimeFormatter.ofPattern("EEE d")
 
-// The timeline: the chips that pick the level, the bar that steps the date, & the level itself. The
-// date in view ([focus]) is kept across a change of level.
+// The chips that pick the level, which the top bar holds; they scroll sideways where the bar is narrow.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LevelChips(level: Level, onLevel: (Level) -> Unit) {
+	Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+		for (l in Level.entries) FilterChip(selected = l == level, onClick = { onLevel(l) }, label = { Text(l.label) })
+	}
+}
+
+// The timeline: the bar that steps the date, & the level itself. The date in view ([focus]) is kept
+// across a change of level.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Timeline(
@@ -96,9 +107,6 @@ fun Timeline(
 ) {
 	val today = LocalDate.now()
 	Column(Modifier.fillMaxSize()) {
-		Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-			for (l in Level.entries) FilterChip(selected = l == level, onClick = { onLevel(l) }, label = { Text(l.label) })
-		}
 		Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
 			TextButton(onClick = { onFocus(step(level, focus, -1)) }) { Text("<") }
 			Text(title(level, focus), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
