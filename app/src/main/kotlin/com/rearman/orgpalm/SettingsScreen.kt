@@ -2,6 +2,8 @@ package com.rearman.orgpalm
 
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -20,10 +23,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +67,16 @@ fun SettingsScreen(model: AppModel, folders: List<Folder>, onAddFolder: () -> Un
 	var targetFile by remember(stored) { mutableStateOf(stored.file) }
 	var targetHeading by remember(stored) { mutableStateOf(stored.heading) }
 	var picking by remember { mutableStateOf(false) }
+	// The folder whose Change opened the picker, which the picked folder replaces.
+	// Kept by its URI in saved state, as the picker may recreate the activity.
+	var changing by rememberSaveable { mutableStateOf<String?>(null) }
+	val change = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+		val old = folders.firstOrNull { it.uri == changing }
+		changing = null
+		if (uri != null && old != null) model.replaceFolder(old, uri)
+	}
+	// The folder whose Remove awaits confirmation.
+	var removing by remember { mutableStateOf<Folder?>(null) }
 
 	Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 		Text("Folders", style = MaterialTheme.typography.titleMedium)
@@ -71,6 +86,10 @@ fun SettingsScreen(model: AppModel, folders: List<Folder>, onAddFolder: () -> Un
 				Text("Subfolders", style = MaterialTheme.typography.labelMedium)
 				Spacer(Modifier.width(8.dp))
 				Switch(checked = f.recursive, onCheckedChange = { model.setRecursive(f, it) })
+			}
+			Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+				TextButton(onClick = { changing = f.uri; change.launch(Uri.parse(f.uri)) }) { Text("Change") }
+				TextButton(onClick = { removing = f }) { Text("Remove") }
 			}
 		}
 		OutlinedButton(onClick = onAddFolder) { Text("Add folder") }
@@ -136,6 +155,21 @@ fun SettingsScreen(model: AppModel, folders: List<Folder>, onAddFolder: () -> Un
 			)
 			model.saveSettings(next, CaptureTarget(targetFile.trim().ifEmpty { stored.file }, targetHeading))
 		}) { Text("Save settings") }
+	}
+
+	removing?.let { f ->
+		AlertDialog(
+			onDismissRequest = { removing = null },
+			confirmButton = {
+				TextButton(onClick = {
+					model.removeFolder(f)
+					removing = null
+				}) { Text("Remove") }
+			},
+			dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+			title = { Text("Remove folder?") },
+			text = { Text("${DocumentsContract.getTreeDocumentId(Uri.parse(f.uri))} leaves the list. Its files stay on the phone.") },
+		)
 	}
 
 	if (picking) {

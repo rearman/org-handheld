@@ -105,6 +105,32 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 		}
 	}
 
+	// Drops a folder from the list & gives back its permission, & walks; its files stay on the phone.
+	fun removeFolder(folder: Folder) {
+		viewModelScope.launch {
+			stores.removeFolder(folder.uri)
+			release(folder.uri)
+			walk()
+		}
+	}
+
+	// Puts a newly picked folder in the place of [folder], w/ its subfolder switch, & walks.
+	fun replaceFolder(folder: Folder, uri: Uri) {
+		val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+		getApplication<Application>().contentResolver.takePersistableUriPermission(uri, flags)
+		viewModelScope.launch {
+			stores.replaceFolder(folder.uri, uri.toString())
+			if (uri.toString() != folder.uri) release(folder.uri)
+			walk()
+		}
+	}
+
+	private fun release(uri: String) {
+		val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+		// A permission already gone, e.g. revoked by the user, leaves naught to release.
+		runCatching { getApplication<Application>().contentResolver.releasePersistableUriPermission(Uri.parse(uri), flags) }
+	}
+
 	fun setRecursive(folder: Folder, recursive: Boolean) {
 		viewModelScope.launch {
 			stores.setRecursive(folder.uri, recursive)

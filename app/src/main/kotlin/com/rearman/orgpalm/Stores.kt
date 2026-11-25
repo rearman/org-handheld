@@ -42,6 +42,20 @@ class Stores(private val context: Context) {
 		}
 	}
 
+	suspend fun removeFolder(uri: String) {
+		context.store.edit { p -> p[FOLDERS] = (p[FOLDERS] ?: emptySet()).filter { it.substring(2) != uri }.toSet() }
+	}
+
+	// Puts [new] in the place of [old] w/ its mark, or drops [old] when [new] is listed already.
+	suspend fun replaceFolder(old: String, new: String) {
+		context.store.edit { p ->
+			val set = p[FOLDERS] ?: emptySet()
+			val mark = set.firstOrNull { it.substring(2) == old }?.take(2) ?: FLAT
+			val rest = set.filter { it.substring(2) != old }
+			p[FOLDERS] = (if (rest.any { it.substring(2) == new }) rest else rest + (mark + new)).toSet()
+		}
+	}
+
 	suspend fun setRecursive(uri: String, recursive: Boolean) {
 		context.store.edit { p ->
 			p[FOLDERS] = (p[FOLDERS] ?: emptySet()).map { if (it.substring(2) == uri) (if (recursive) RECURSIVE else FLAT) + uri else it }.toSet()

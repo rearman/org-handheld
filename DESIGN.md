@@ -67,7 +67,7 @@ Files & headings shown as a collapsible tree; a tap on a heading opens a form of
 
 ### Folders
 
-The user picks one or more folders through the Storage Access Framework; the app keeps each as a tree URI w/ a persisted permission (`takePersistableUriPermission`). Any provider serves: Termux exposes its home through its DocumentsProvider in the system picker, so a git checkout under `~/org` can be picked directly. The app reads every file in each folder whose name ends in `.org`, skipping dot-files. A folder reads flat, as `org-agenda-files` reads a directory; a switch per folder adds its subfolders, recursively, skipping dot-folders (`.git` & the like). All files are UTF-8; the app keeps the line endings that it finds (LF for a file that it creates).
+The user picks one or more folders through the Storage Access Framework; the app keeps each as a tree URI w/ a persisted permission (`takePersistableUriPermission`). Any provider serves: Termux exposes its home through its DocumentsProvider in the system picker, so a git checkout under `~/org` can be picked directly. The app reads every file in each folder whose name ends in `.org`, skipping dot-files. A folder reads flat, as `org-agenda-files` reads a directory; a switch per folder adds its subfolders, recursively, skipping dot-folders (`.git` & the like). On the settings page each folder can be changed, i.e. picked anew in its place w/ its switch kept, or removed from the list, whereupon the app releases its permission & leaves its files untouched. All files are UTF-8; the app keeps the line endings that it finds (LF for a file that it creates).
 
 The app needs no fixed layout & writes no IDs. It creates a file only when the user asks (SAF `createDocument`).
 
