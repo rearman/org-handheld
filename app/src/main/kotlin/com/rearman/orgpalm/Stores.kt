@@ -16,6 +16,8 @@ import com.rearman.orgpalm.org.Position
 import com.rearman.orgpalm.org.TodoSequence
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 
 private val Context.store by preferencesDataStore("org-palm")
 
@@ -61,7 +63,17 @@ class Stores(private val context: Context) {
 		}
 	}
 
+	// The saved agenda filters, the starting set until the user saves others.
+	val filters: Flow<List<SavedFilter>> = context.store.data.map { p ->
+		p[FILTERS]?.let { runCatching { FilterCodec.read(it) }.getOrNull() } ?: Filters.STARTING
+	}
+
+	suspend fun saveFilters(filters: List<SavedFilter>) {
+		context.store.edit { it[FILTERS] = FilterCodec.write(filters) }
+	}
+
 	private companion object {
+		val FILTERS = stringPreferencesKey("filters")
 		val CAPTURE_FILE = stringPreferencesKey("capture_file")
 		val CAPTURE_HEADING = stringPreferencesKey("capture_heading")
 
@@ -167,4 +179,54 @@ object SettingsCodec {
 
 	private fun marks(log: KeywordLog): String =
 		"(" + mark(log.enter) + (if (log.leave != LogMode.NONE) "/" + mark(log.leave) else "") + ")"
+}
+
+// The saved filters to & from JSON, w/ the platform's org.json.
+object FilterCodec {
+	fun write(filters: List<SavedFilter>): String = JSONArray(
+		filters.map { f ->
+			JSONObject()
+				.put("name", f.name)
+				.put(
+					"blocks",
+					JSONArray(
+						f.blocks.map { b ->
+							JSONObject()
+								.put("header", b.header)
+								.put("span", b.span)
+								.put("states", JSONArray(b.states.toList()))
+								.put("tags", JSONArray(b.tags.toList()))
+								.put("categories", JSONArray(b.categories.toList()))
+								.put("stuck", b.stuck)
+								.put("byTag", b.byTag)
+						},
+					),
+				)
+		},
+	).toString()
+
+	fun read(text: String): List<SavedFilter> {
+		val array = JSONArray(text)
+		return (0 until array.length()).map { i ->
+			val f = array.getJSONObject(i)
+			val blocks = f.getJSONArray("blocks")
+			SavedFilter(
+				f.getString("name"),
+				(0 until blocks.length()).map { j ->
+					val b = blocks.getJSONObject(j)
+					Block(
+						header = b.getString("header"),
+						span = b.optLong("span"),
+						states = strings(b.optJSONArray("states")),
+						tags = strings(b.optJSONArray("tags")),
+						categories = strings(b.optJSONArray("categories")),
+						stuck = b.optBoolean("stuck"),
+						byTag = b.optBoolean("byTag"),
+					)
+				},
+			)
+		}
+	}
+
+	private fun strings(a: JSONArray?): Set<String> = if (a == null) emptySet() else (0 until a.length()).map { a.getString(it) }.toSet()
 }

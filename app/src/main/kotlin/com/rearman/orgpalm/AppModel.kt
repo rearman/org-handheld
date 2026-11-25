@@ -60,6 +60,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 	val folders: StateFlow<List<Folder>> = stores.folders.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 	val settings: StateFlow<OrgSettings> = stores.settings.stateIn(viewModelScope, SharingStarted.Eagerly, OrgSettings.STARTING)
 	val captureTarget: StateFlow<CaptureTarget> = stores.captureTarget.stateIn(viewModelScope, SharingStarted.Eagerly, CaptureTarget())
+	val filters: StateFlow<List<SavedFilter>> = stores.filters.stateIn(viewModelScope, SharingStarted.Eagerly, Filters.STARTING)
 
 	private val loadedFlow = MutableStateFlow<List<Loaded>>(emptyList())
 	val loaded: StateFlow<List<Loaded>> = loadedFlow
@@ -120,6 +121,10 @@ class AppModel(app: Application) : AndroidViewModel(app) {
 				withContext(Dispatchers.IO) { walkLocked() }
 			}
 		}
+	}
+
+	fun saveFilters(filters: List<SavedFilter>) {
+		viewModelScope.launch { stores.saveFilters(filters) }
 	}
 
 	private fun writer(): OrgWriter = OrgWriter({ LocalDateTime.now() }, settings.value)

@@ -80,6 +80,7 @@ private fun App(model: AppModel = viewModel()) {
 	val loaded by model.loaded.collectAsStateWithLifecycle()
 	val files = remember(loaded) { loaded.map { it.file } }
 	val error by model.error.collectAsStateWithLifecycle()
+	val filters by model.filters.collectAsStateWithLifecycle()
 	var showSettings by rememberSaveable { mutableStateOf(false) }
 	var level by rememberSaveable { mutableStateOf(Level.AGENDA) }
 	var focus by rememberSaveable { mutableStateOf(LocalDate.now()) }
@@ -107,7 +108,7 @@ private fun App(model: AppModel = viewModel()) {
 			TopAppBar(
 				title = { Text(if (settingsShown) "Settings" else "org-palm") },
 				actions = {
-					if (!settingsShown) ViewsMenu(filter) { filter = it }
+					if (!settingsShown) ViewsMenu(filter, filters) { filter = it }
 					TextButton(onClick = { showSettings = !showSettings }) { Text(if (showSettings) "Done" else "Settings") }
 				},
 			)
@@ -122,8 +123,9 @@ private fun App(model: AppModel = viewModel()) {
 				SettingsScreen(model, folders) { pick.launch(null) }
 			} else {
 				val open = { row: AgendaRow -> editing = Place(row.file, row.entry) }
-				val saved = Filters.STARTING.firstOrNull { it.name == filter }
+				val saved = filters.firstOrNull { FILTER + it.name == filter }
 				when {
+					filter == EDIT_FILTERS -> FilterEditor(model) { filter = null }
 					filter == OUTLINE -> OutlineTree(files, Modifier.fillMaxSize(), null) { file, e -> editing = Place(file, e) }
 					saved != null -> FilterView(files, saved, open)
 					else -> Timeline(files, level, { level = it }, focus, { focus = it }, open)
@@ -214,17 +216,21 @@ fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) ->
 	}
 }
 
-// The view of the outline browser in the overflow menu.
+// The views of the overflow menu besides the timeline; a saved filter goes by FILTER & its name, so
+// that no filter's name can clash w/ another view.
 private const val OUTLINE = "Outline"
+private const val EDIT_FILTERS = "Edit filters"
+private const val FILTER = "filter:"
 
-// The overflow menu: the timeline, the outline browser, or a saved filter by name.
+// The overflow menu: the timeline, the outline browser, a saved filter, or the filter editor.
 @Composable
-private fun ViewsMenu(current: String?, onPick: (String?) -> Unit) {
+private fun ViewsMenu(current: String?, filters: List<SavedFilter>, onPick: (String?) -> Unit) {
 	var open by remember { mutableStateOf(false) }
-	TextButton(onClick = { open = true }) { Text(current ?: "Timeline") }
+	TextButton(onClick = { open = true }) { Text(current?.removePrefix(FILTER) ?: "Timeline") }
 	DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
 		DropdownMenuItem(text = { Text("Timeline") }, onClick = { onPick(null); open = false })
 		DropdownMenuItem(text = { Text(OUTLINE) }, onClick = { onPick(OUTLINE); open = false })
-		for (f in Filters.STARTING) DropdownMenuItem(text = { Text(f.name) }, onClick = { onPick(f.name); open = false })
+		for (f in filters) DropdownMenuItem(text = { Text(f.name) }, onClick = { onPick(FILTER + f.name); open = false })
+		DropdownMenuItem(text = { Text(EDIT_FILTERS) }, onClick = { onPick(EDIT_FILTERS); open = false })
 	}
 }
