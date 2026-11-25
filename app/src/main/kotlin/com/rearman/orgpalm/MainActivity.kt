@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -40,10 +41,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -93,6 +98,29 @@ private fun App(model: AppModel = viewModel()) {
 	var capturing by remember { mutableStateOf(false) }
 	var filter by rememberSaveable { mutableStateOf<String?>(null) }
 	var reveal by remember { mutableStateOf<Place?>(null) }
+
+	// The views shown before this one, as view(), the last on top. Each change of the settings page,
+	// the view, or the level pushes the view left; the back button or gesture pops it & shows it
+	// again, & on the first view the app closes as before.
+	val history = rememberSaveable(saver = HistorySaver) { mutableStateListOf<String>() }
+	val current = view(showSettings, filter, level)
+	var shown by rememberSaveable { mutableStateOf(current) }
+	var popping by remember { mutableStateOf(false) }
+	LaunchedEffect(current) {
+		if (current != shown) {
+			if (popping) popping = false else history.add(shown)
+			shown = current
+		}
+	}
+	BackHandler(enabled = history.isNotEmpty()) {
+		// A filter's name may hold a bar, so the marks split at the first bar & the last.
+		val v = history.removeAt(history.lastIndex)
+		popping = true
+		showSettings = v.substringBefore('|') == "S"
+		filter = v.substringAfter('|').substringBeforeLast('|').ifEmpty { null }
+		level = Level.valueOf(v.substringAfterLast('|'))
+		reveal = null
+	}
 	val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { model.addFolder(it) } }
 
 	// Alarms post through a notification, which API 33 & up asks the user to allow.
@@ -242,6 +270,15 @@ fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) ->
 		}
 	}
 }
+
+// A view, as the history keeps it: the settings mark, the view of the menu, & the level.
+private fun view(settings: Boolean, filter: String?, level: Level): String =
+	listOf(if (settings) "S" else "", filter ?: "", level.name).joinToString("|")
+
+private val HistorySaver = listSaver<SnapshotStateList<String>, String>(
+	save = { it.toList() },
+	restore = { it.toMutableStateList() },
+)
 
 // The views of the overflow menu besides the timeline; a saved filter goes by FILTER & its name, so
 // that no filter's name can clash w/ another view.
