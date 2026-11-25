@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -115,6 +116,13 @@ private class Form(entry: Entry?) {
 		val oldBody = entry?.event?.body ?: entry?.body ?: ""
 		if (body != oldBody) out.add(FieldChange.Body(body))
 		return out
+	}
+
+	// A new entry's changes, its body led by the line that init.el's capture templates write under
+	// the heading, "Taken %U": the inactive stamp of [now], then the body typed.
+	fun captureChanges(now: LocalDateTime): List<FieldChange> {
+		val taken = "Taken " + Timestamp(now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0), active = false).format()
+		return changes(null).filter { it !is FieldChange.Body } + FieldChange.Body(if (body.isBlank()) taken else taken + "\n" + body)
 	}
 }
 
@@ -190,7 +198,7 @@ fun EntrySheet(model: AppModel, subject: Place?, target: Place?, onClose: () -> 
 						val p = place
 						when {
 							e?.heading != null -> show(model.save(e.file, Edit.Update(e.heading.anchor, form.changes(original))))
-							p != null -> show(model.capture(p.file, p.heading?.anchor, form.changes(null)))
+							p != null -> show(model.capture(p.file, p.heading?.anchor, form.captureChanges(LocalDateTime.now())))
 							else -> message = "Pick a place first."
 						}
 					}
