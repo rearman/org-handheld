@@ -33,9 +33,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -70,6 +72,9 @@ private const val PINCH_OUT = 1.33f
 
 // The width that a one-finger swipe must cross to step the date in Day, Week, & Month.
 private val SWIPE = 64.dp
+
+// The opacity of a Month cell outside the month in view.
+private const val DIM = 0.45f
 
 // The height of one hour in the Day & Week grids, & the hour that a grid opens at.
 private val HOUR = 48.dp
@@ -317,7 +322,7 @@ private fun Untimed(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (Agenda
 }
 
 // The Month grid: a row per week, a cell per day w/ its date & the titles that fit; a tap on a day
-// calls [onDay].
+// calls [onDay]. The days of the months before & after are dimmed.
 @Composable
 private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay: (LocalDate) -> Unit) {
 	val line = MaterialTheme.colorScheme.outlineVariant
@@ -340,6 +345,8 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 							.weight(1f)
 							.fillMaxHeight()
 							.drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f)) }
+							.background(if (inMonth) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
+							.alpha(if (inMonth) 1f else DIM)
 							.clickable { onDay(day.date) }
 							.padding(2.dp),
 					) {
