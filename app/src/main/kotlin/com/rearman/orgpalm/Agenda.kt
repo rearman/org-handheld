@@ -92,19 +92,22 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 		// on today the days since the written date (org-agenda-get-deadlines), & a timestamp, range, or
 		// sexp p. Org shows each kind as a line of its own; the one row here takes the highest.
 		private fun urgency(e: Entry, d: LocalDate, today: LocalDate, warningDays: Int, p: Int): Int {
-			var u = p
+			val lines = ArrayList<Int>()
 			val due = d == today && !e.done
 			e.scheduled?.let {
 				if (it.planningDates(d, d, scheduled = true).isNotEmpty() || (due && it.pastDue(today, scheduled = true))) {
-					u = maxOf(u, 99 + ChronoUnit.DAYS.between(it.date, d).toInt() + p)
+					lines.add(99 + ChronoUnit.DAYS.between(it.date, d).toInt() + p)
 				}
 			}
 			e.deadline?.let {
 				val shown = it.planningDates(d, d, scheduled = false).isNotEmpty() ||
 					(due && (it.pastDue(today, scheduled = false) || it.dueSoon(today, warningDays)))
-				if (shown) u = maxOf(u, p + if (d == today) ChronoUnit.DAYS.between(it.date, today).toInt() else 0)
+				if (shown) lines.add(p + if (d == today) ChronoUnit.DAYS.between(it.date, today).toInt() else 0)
 			}
-			return u
+			val stamped = e.activeStamps.any { it.occurrences(d, d).isNotEmpty() } ||
+				e.ranges.any { d in it } || e.sexps.any { it.dates(d, d).isNotEmpty() }
+			if (stamped || lines.isEmpty()) lines.add(p)
+			return lines.max()
 		}
 
 		// The timed stamp that puts [e] on [d]: its SCHEDULED, its DEADLINE, or an active stamp of its
