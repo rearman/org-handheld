@@ -214,7 +214,7 @@ private fun Header(text: String) {
 // & a long press shows the entry in the outline. Each row sits in a bubble of the colors of the Day &
 // Week grids: a timed row's, else an untimed row's.
 @Composable
-private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
+fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val e = row.entry
 	val muted = MaterialTheme.colorScheme.onSurfaceVariant
 	val colors = MaterialTheme.colorScheme

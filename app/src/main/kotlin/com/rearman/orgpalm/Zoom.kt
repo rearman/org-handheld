@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,11 +40,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rearman.orgpalm.org.OrgFile
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
@@ -74,6 +78,15 @@ private const val DIM = 0.45f
 
 // The opacity of the primary color that tints today's column in Week & today's cell in Month.
 private const val TODAY_TINT = 0.12f
+
+// The most height that the band of untimed rows atop the Day & Week grids takes.
+private val BAND = 140.dp
+
+// The height of a span's lane in the Week band & in a Month week, & of a Month cell's date & its padding.
+private val SPAN_WEEK = 20.dp
+private val SPAN_MONTH = 14.dp
+private val MONTH_DATE = 18.dp
+private val MONTH_PAD = 2.dp
 
 // The height of one hour in the Day & Week grids, & the hour that a grid opens at.
 private val HOUR = 48.dp
@@ -226,7 +239,8 @@ private fun Modifier.swipe(key: Any, back: () -> Unit, ahead: () -> Unit): Modif
 }
 
 // The Day & Week grids: a band of untimed rows atop each day, w/o the early warnings of coming
-// deadlines, then one hour grid for all the days.
+// deadlines, then one hour grid for all the days. Day's band holds rows as the Agenda's; Week's, the
+// spans across their days & a list per day.
 @Composable
 private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: Boolean, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val gutter = 44.dp
@@ -241,11 +255,11 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 				}
 			}
 		}
-		Row(Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberCenteredScrollState()).padding(start = gutter)) {
-			for (day in days) {
-				Column(Modifier.weight(1f).background(todayTint(showDayNames && day.date == today)).padding(1.dp)) {
-					for (row in day.rows.filter { it.time == null && !it.early }) Untimed(row, onOpen, onShow)
-				}
+		if (showDayNames) {
+			WeekBand(days, today, gutter, onOpen, onShow)
+		} else {
+			Column(Modifier.fillMaxWidth().heightIn(max = BAND).verticalScroll(rememberCenteredScrollState())) {
+				for (row in days.single().rows.filter { untimed(it) }) AgendaLine(row, onOpen, onShow)
 			}
 		}
 		HorizontalDivider()
@@ -295,6 +309,95 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 			}
 		}
 	}
+}
+
+// Whether a row goes in the band: w/o a time, & not a coming deadline's early warning.
+private fun untimed(row: AgendaRow): Boolean = row.time == null && !row.early
+
+// The Week band, no taller than BAND: the spans atop, each a bar over its days, then a list per day of
+// its other untimed rows, each scrolled on its own. Limit: the spans' lanes do not scroll, so many
+// spans at once crowd out the lists.
+@Composable
+private fun WeekBand(days: List<AgendaDay>, today: LocalDate, gutter: Dp, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
+	val bars = spans(days)
+	val lanes = spanLanes(bars)
+	val count = (lanes.maxOrNull() ?: -1) + 1
+	Column(Modifier.fillMaxWidth().heightIn(max = BAND).padding(start = gutter)) {
+		if (count > 0) {
+			BoxWithConstraints(Modifier.fillMaxWidth().height(SPAN_WEEK * count)) {
+				val col = maxWidth / days.size
+				bars.forEachIndexed { i, s ->
+					SpanBar(
+						s.row,
+						Modifier.offset(x = col * s.first, y = SPAN_WEEK * lanes[i]).width(col * (s.last - s.first + 1)).height(SPAN_WEEK),
+						Modifier.combinedClickable(onLongClick = { onShow(s.row) }) { onOpen(s.row) },
+						MaterialTheme.typography.labelSmall.fontSize,
+					)
+				}
+			}
+		}
+		Row(Modifier.fillMaxWidth().weight(1f, fill = false)) {
+			for (day in days) {
+				Column(Modifier.weight(1f).background(todayTint(day.date == today)).verticalScroll(rememberCenteredScrollState()).padding(1.dp)) {
+					for (row in day.rows.filter { untimed(it) && !inSpan(it, day.date) }) Untimed(row, onOpen, onShow)
+				}
+			}
+		}
+	}
+}
+
+// A range of more than one day drawn as one bar over a stretch of days, from day [first] to day
+// [last] of the stretch.
+private class Span(val row: AgendaRow, val first: Int, val last: Int)
+
+// Whether [row] shows on [d] through a range of more than one day.
+private fun inSpan(row: AgendaRow, d: LocalDate): Boolean = row.entry.ranges.any { it.start != it.endInclusive && d in it }
+
+// The spans of a stretch of consecutive days: each range of more than one day that a row of the
+// stretch shows, cut to the stretch, once, in the order of its first day.
+private fun spans(days: List<AgendaDay>): List<Span> {
+	val seen = HashSet<Triple<String, Int, ClosedRange<LocalDate>>>()
+	val out = ArrayList<Span>()
+	days.forEachIndexed { i, day ->
+		for (row in day.rows) {
+			for (r in row.entry.ranges) {
+				if (r.start == r.endInclusive || day.date !in r) continue
+				if (!seen.add(Triple(row.file.path, row.entry.anchor.lineIndex, r))) continue
+				out += Span(row, i, minOf(days.lastIndex, i + ChronoUnit.DAYS.between(day.date, r.endInclusive).toInt()))
+			}
+		}
+	}
+	return out
+}
+
+// A lane per span, so that spans whose days overlap sit one above the other: each takes the first
+// lane free at its first day.
+private fun spanLanes(spans: List<Span>): List<Int> {
+	val ends = ArrayList<Int>()
+	return spans.map { s ->
+		val lane = ends.indexOfFirst { it < s.first }.takeIf { it >= 0 } ?: ends.size.also { ends.add(0) }
+		ends[lane] = s.last
+		lane
+	}
+}
+
+// A span's bar: the state & title on one line, on the untimed rows' color; [place] sets it over its
+// days, & [act] (after the clip, for the ripple's shape) takes its taps.
+@Composable
+private fun SpanBar(row: AgendaRow, place: Modifier, act: Modifier, fontSize: TextUnit) {
+	Text(
+		listOfNotNull(row.entry.state, row.title).joinToString(" "),
+		place
+			.padding(1.dp)
+			.clip(RoundedCornerShape(4.dp))
+			.then(act)
+			.background(MaterialTheme.colorScheme.secondaryContainer)
+			.padding(horizontal = 4.dp),
+		fontSize = fontSize,
+		color = MaterialTheme.colorScheme.onSecondaryContainer,
+		maxLines = 1,
+		overflow = TextOverflow.Ellipsis,
+	)
 }
 
 // The minute of the day at which a timed row ends: its end, else POINT_MINUTES after its start, at
@@ -353,8 +456,9 @@ private fun TodayLabel(text: String, isToday: Boolean, color: Color) {
 private fun todayTint(isToday: Boolean): Color =
 	if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = TODAY_TINT) else Color.Transparent
 
-// The Month grid: a row per week, a cell per day w/ its date & the titles that fit; a tap on a day
-// calls [onDay]. The days of the months before & after are dimmed.
+// The Month grid: a row per week, a cell per day w/ its date & the titles that fit, & the week's spans
+// as bars over their days below the dates; a tap on a day calls [onDay]. The days of the months
+// before & after are dimmed.
 @Composable
 private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay: (LocalDate) -> Unit) {
 	val line = MaterialTheme.colorScheme.outlineVariant
@@ -369,31 +473,55 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 			}
 		}
 		for (week in days.chunked(7)) {
-			Row(Modifier.fillMaxWidth().weight(1f)) {
-				for (day in week) {
-					val inMonth = day.date.monthValue == month
-					Column(
-						Modifier
-							.weight(1f)
-							.fillMaxHeight()
-							.drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f)) }
-							.background(if (inMonth) todayTint(day.date == today) else MaterialTheme.colorScheme.surfaceVariant)
-							.alpha(if (inMonth) 1f else DIM)
-							.clickable { onDay(day.date) }
-							.padding(2.dp),
-					) {
-						TodayLabel(
-							day.date.dayOfMonth.toString(),
-							day.date == today,
-							if (inMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-						)
-						for (row in day.rows.take(3)) {
-							Text(row.title, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-						}
-						if (day.rows.size > 3) {
-							Text("+${day.rows.size - 3}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+			val bars = spans(week)
+			val lanes = spanLanes(bars)
+			val count = (lanes.maxOrNull() ?: -1) + 1
+			BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+				Row(Modifier.fillMaxSize()) {
+					for (day in week) {
+						val inMonth = day.date.monthValue == month
+						Column(
+							Modifier
+								.weight(1f)
+								.fillMaxHeight()
+								.drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f)) }
+								.background(if (inMonth) todayTint(day.date == today) else MaterialTheme.colorScheme.surfaceVariant)
+								.alpha(if (inMonth) 1f else DIM)
+								.clickable { onDay(day.date) }
+								.padding(MONTH_PAD),
+						) {
+							Box(Modifier.height(MONTH_DATE)) {
+								TodayLabel(
+									day.date.dayOfMonth.toString(),
+									day.date == today,
+									if (inMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+								)
+							}
+							// The spans' bars take the lanes below the date; the other rows fill the rest of three lines.
+							Spacer(Modifier.height(SPAN_MONTH * count))
+							val others = day.rows.filterNot { inSpan(it, day.date) }
+							val room = maxOf(0, 3 - count)
+							for (row in others.take(room)) {
+								Text(row.title, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+							}
+							if (others.size > room) {
+								Text("+${others.size - room}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+							}
 						}
 					}
+				}
+				// The bars take no taps, so that a tap on one opens its day as a tap on the cell does.
+				val col = maxWidth / 7
+				bars.forEachIndexed { i, s ->
+					SpanBar(
+						s.row,
+						Modifier
+							.offset(x = col * s.first, y = MONTH_PAD + MONTH_DATE + SPAN_MONTH * lanes[i])
+							.width(col * (s.last - s.first + 1))
+							.height(SPAN_MONTH),
+						Modifier,
+						10.sp,
+					)
 				}
 			}
 		}
