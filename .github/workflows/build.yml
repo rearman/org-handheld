@@ -1,15 +1,20 @@
 name: Build
 
 # Runs the tests of :org-core (the Org parser and writer) and of :app, and builds the release app,
-# which it uploads as org-handheld.apk. The fixtures that the tests compare against come from
-# tools/make-fixtures.el, which runs on a desktop w/ Emacs, not here.
+# which it uploads as org-handheld.apk. A tag org-handheld-v* also releases it, as palm-suite releases
+# its apps: the APK, named after the tag, goes on the GitHub Release of the tag. The fixtures that the
+# tests compare against come from tools/make-fixtures.el, which runs on a desktop w/ Emacs, not here.
 on:
   push:
+    branches: [ master ]
+    tags: [ 'org-handheld-v*' ]
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to create the release on a tag build
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -34,15 +39,49 @@ jobs:
       - name: Build and test app
         run: gradle :app:test :app:assembleRelease --stacktrace
 
+      # A tag build names the APK after the tag, for example org-handheld-v0.2.apk.
       - name: Rename APK
-        run: mv app/build/outputs/apk/release/app-release.apk org-handheld.apk
+        id: apk
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          apk=org-handheld.apk
+          case "$TAG" in
+            org-handheld-v*) apk="$TAG.apk" ;;
+          esac
+          mv app/build/outputs/apk/release/app-release.apk "$apk"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
 
-      # archive: false uploads the file itself, so the artifact is org-handheld.apk.
+      # archive: false uploads the file itself, so the artifact is the APK.
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
-          path: org-handheld.apk
+          path: ${{ steps.apk.outputs.apk }}
           archive: false
+
+      # On a release tag, attach the APK to the GitHub Release of the tag. A rerun replaces it.
+      - name: Attach APK to release
+        if: startsWith(github.ref_name, 'org-handheld-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.apk.outputs.apk }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+
+      # Keep the two newest releases (this one and the one before) and delete the older ones. Their
+      # tags stay. Versions sort with sort -V.
+      - name: Delete old releases
+        if: startsWith(github.ref_name, 'org-handheld-v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 1000 --json tagName -q '.[].tagName' | grep -E '^org-handheld-v' | sort -V | head -n -2 |
+            while read -r tag; do gh release delete "$tag" --yes; done
 
       # The HTML and XML reports show which fixture a failing test compared.
       - name: Upload test reports

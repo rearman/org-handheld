@@ -9,7 +9,7 @@ org-palm is an Android front end for any org file in the folders the user picks,
 
 ## Building & testing
 
-This machine has no JDK, Gradle, or Android SDK. Tests run in CI alone (`.github/workflows/build.yml`: `gradle :org-core:test`, then `gradle :app:test :app:assembleRelease`, on JDK 17 & Gradle 9.4.1); verify a change by reading it. Each run uploads the app as `org-handheld.apk`, signed w/ the key kept in the repository (`app/debug.keystore`, as palm-suite keeps its own), so that each new build installs over the old one; raise `versionCode` by hand for a release.
+This machine has no JDK, Gradle, or Android SDK. Tests run in CI alone (`.github/workflows/build.yml`: `gradle :org-core:test`, then `gradle :app:test :app:assembleRelease`, on JDK 17 & Gradle 9.4.1); verify a change by reading it. Each run uploads the app as `org-handheld.apk`, signed w/ the key kept in the repository (`app/debug.keystore`, as palm-suite keeps its own), so that each new build installs over the old one. A release, as in palm-suite: a bump commit raises `versionCode` & `versionName`, then a lightweight tag `org-handheld-v<versionName>` on master, pushed w/ git alone (jj cannot push tags; one tag per push), puts `org-handheld-v<versionName>.apk` on the GitHub Release of the tag, & the two newest releases stay.
 
 ## Fixtures
 
