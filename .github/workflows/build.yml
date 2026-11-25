@@ -1,9 +1,8 @@
 name: Build
 
-# Runs the tests of :org-core (the Org parser and writer) and of :app, and builds the debug app, which
-# it uploads as org-handheld.apk, signed w/ the key of the repository's secrets. The fixtures that
-# the tests compare against come from tools/make-fixtures.el, which runs on a desktop w/ Emacs, not
-# here.
+# Runs the tests of :org-core (the Org parser and writer) and of :app, and builds the release app,
+# which it uploads as org-handheld.apk. The fixtures that the tests compare against come from
+# tools/make-fixtures.el, which runs on a desktop w/ Emacs, not here.
 on:
   push:
   workflow_dispatch:
@@ -29,31 +28,17 @@ jobs:
       - name: Test org-core
         run: gradle :org-core:test --stacktrace
 
-      # The signing key of every APK (app/build.gradle.kts), from the repository's secrets, so that a
-      # later run's APK updates an earlier install. W/o the secret the build keeps the debug key, and
-      # no APK is uploaded.
-      - name: Decode signing key
-        env:
-          KEYSTORE_B64: ${{ secrets.ORG_HANDHELD_KEYSTORE }}
-        run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/org-handheld.p12"
-            echo "ORG_HANDHELD_KEYSTORE=$RUNNER_TEMP/org-handheld.p12" >> "$GITHUB_ENV"
-          fi
-
-      # The Ubuntu runner carries an Android SDK; :app:test runs the walk's tests on the JVM.
+      # The Ubuntu runner carries an Android SDK; :app:test runs the walk's tests on the JVM. The
+      # release APK is signed w/ the key kept in the repository (app/debug.keystore), so that each new
+      # build installs over the old one.
       - name: Build and test app
-        env:
-          ORG_HANDHELD_KEYSTORE_PASSWORD: ${{ secrets.ORG_HANDHELD_KEYSTORE_PASSWORD }}
-        run: gradle :app:test :app:assembleDebug --stacktrace
+        run: gradle :app:test :app:assembleRelease --stacktrace
 
-      - name: Name the APK
-        if: env.ORG_HANDHELD_KEYSTORE != ''
-        run: cp app/build/outputs/apk/debug/app-debug.apk org-handheld.apk
+      - name: Rename APK
+        run: mv app/build/outputs/apk/release/app-release.apk org-handheld.apk
 
-      # One file, unzipped: the artifact is org-handheld.apk itself.
+      # archive: false uploads the file itself, so the artifact is org-handheld.apk.
       - name: Upload APK
-        if: env.ORG_HANDHELD_KEYSTORE != ''
         uses: actions/upload-artifact@v7
         with:
           path: org-handheld.apk

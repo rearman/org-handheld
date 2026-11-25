@@ -3,13 +3,6 @@ plugins {
 	id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// CI signs every build w/ one key, so that the APK of a later run updates an earlier install: the PKCS12
-// file ORG_HANDHELD_KEYSTORE names (alias org-handheld) & its password, from the repository's secrets.
-// GITHUB_RUN_NUMBER gives the rising versionCode. A local build keeps the debug key & versionCode 1.
-val keystore = providers.environmentVariable("ORG_HANDHELD_KEYSTORE").orNull
-val keystorePassword = providers.environmentVariable("ORG_HANDHELD_KEYSTORE_PASSWORD").orNull
-val runNumber = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.toIntOrNull()
-
 // The Android app of org-palm: the folders, the walk, & the screens, on top of :org-core. AGP compiles
 // the Kotlin (built-in Kotlin), so no Kotlin Android plugin is applied.
 android {
@@ -20,25 +13,28 @@ android {
 		applicationId = "com.rearman.orgpalm"
 		minSdk = 26
 		targetSdk = 36
-		versionCode = runNumber ?: 1
+		versionCode = 1
 		versionName = "0.2"
 	}
 
+	// A fixed key, kept in the repository, so that each new build
+	// installs over the old one and keeps your data.
 	signingConfigs {
-		if (keystore != null) {
-			create("ci") {
-				storeFile = file(keystore)
-				storeType = "pkcs12"
-				storePassword = keystorePassword
-				keyAlias = "org-handheld"
-				keyPassword = keystorePassword
-			}
+		getByName("debug") {
+			storeFile = file("debug.keystore")
+			storePassword = "android"
+			keyAlias = "androiddebugkey"
+			keyPassword = "android"
 		}
 	}
 
 	buildTypes {
 		getByName("debug") {
-			if (keystore != null) signingConfig = signingConfigs.getByName("ci")
+			signingConfig = signingConfigs.getByName("debug")
+		}
+		getByName("release") {
+			isMinifyEnabled = false
+			signingConfig = signingConfigs.getByName("debug")
 		}
 	}
 
