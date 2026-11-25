@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -19,11 +20,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -172,24 +177,37 @@ private fun Header(text: String) {
 }
 
 // Time, leaders, state, priority, title, tags (own, then inherited), & category. A tap opens the sheet,
-// & a long press shows the entry in the outline.
+// & a long press shows the entry in the outline. Each row sits in a bubble of the colors of the Day &
+// Week grids: a timed row's, else an untimed row's.
 @Composable
 private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val e = row.entry
 	val muted = MaterialTheme.colorScheme.onSurfaceVariant
-	Column(Modifier.fillMaxWidth().combinedClickable(onLongClick = { onShow(row) }) { onOpen(row) }.padding(horizontal = 16.dp, vertical = 6.dp)) {
-		Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-			row.time?.let { Text(TIME.format(it), color = muted) }
-			for (leader in row.leaders) Text(leader, color = MaterialTheme.colorScheme.error)
-			e.state?.let { Text(it, fontWeight = FontWeight.Bold, color = if (e.done) muted else MaterialTheme.colorScheme.tertiary) }
-			e.priority?.let { Text("[#$it]", color = MaterialTheme.colorScheme.secondary) }
-			Text(e.title, Modifier.weight(1f))
-		}
-		Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-			Text(e.category, style = MaterialTheme.typography.labelMedium, color = muted)
-			if (e.tags.isNotEmpty()) Text(e.tags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium)
-			if (e.inheritedTags.isNotEmpty()) {
-				Text(e.inheritedTags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium, color = muted)
+	val colors = MaterialTheme.colorScheme
+	val (fill, ink) = if (row.time != null) colors.primaryContainer to colors.onPrimaryContainer else colors.secondaryContainer to colors.onSecondaryContainer
+	CompositionLocalProvider(LocalContentColor provides ink) {
+		Column(
+			Modifier
+				.fillMaxWidth()
+				.padding(horizontal = 8.dp, vertical = 2.dp)
+				.clip(RoundedCornerShape(4.dp))
+				.combinedClickable(onLongClick = { onShow(row) }) { onOpen(row) }
+				.background(fill)
+				.padding(horizontal = 8.dp, vertical = 4.dp),
+		) {
+			Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+				row.time?.let { Text(TIME.format(it), color = muted) }
+				for (leader in row.leaders) Text(leader, color = MaterialTheme.colorScheme.error)
+				e.state?.let { Text(it, fontWeight = FontWeight.Bold, color = if (e.done) muted else MaterialTheme.colorScheme.tertiary) }
+				e.priority?.let { Text("[#$it]", color = MaterialTheme.colorScheme.secondary) }
+				Text(e.title, Modifier.weight(1f))
+			}
+			Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+				Text(e.category, style = MaterialTheme.typography.labelMedium, color = muted)
+				if (e.tags.isNotEmpty()) Text(e.tags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium)
+				if (e.inheritedTags.isNotEmpty()) {
+					Text(e.inheritedTags.joinToString(":", ":", ":"), style = MaterialTheme.typography.labelMedium, color = muted)
+				}
 			}
 		}
 	}
