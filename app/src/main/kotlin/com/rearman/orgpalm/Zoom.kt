@@ -72,6 +72,9 @@ private val SWIPE = 64.dp
 // The opacity of a Month cell outside the month in view.
 private const val DIM = 0.45f
 
+// The opacity of the primary color that tints today's column in Week & today's cell in Month.
+private const val TODAY_TINT = 0.12f
+
 // The height of one hour in the Day & Week grids, & the hour that a grid opens at.
 private val HOUR = 48.dp
 private const val FIRST_HOUR = 7
@@ -232,19 +235,15 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 		if (showDayNames) {
 			Row(Modifier.fillMaxWidth().padding(start = gutter)) {
 				for (day in days) {
-					Text(
-						DAY_SHORT.format(day.date),
-						Modifier.weight(1f),
-						style = MaterialTheme.typography.labelMedium,
-						fontWeight = if (day.date == today) FontWeight.Bold else FontWeight.Normal,
-						color = if (day.date == today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-					)
+					Box(Modifier.weight(1f)) {
+						TodayLabel(DAY_SHORT.format(day.date), day.date == today, MaterialTheme.colorScheme.onSurface)
+					}
 				}
 			}
 		}
 		Row(Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberCenteredScrollState()).padding(start = gutter)) {
 			for (day in days) {
-				Column(Modifier.weight(1f).padding(1.dp)) {
+				Column(Modifier.weight(1f).background(todayTint(showDayNames && day.date == today)).padding(1.dp)) {
 					for (row in day.rows.filter { it.time == null && !it.early }) Untimed(row, onOpen, onShow)
 				}
 			}
@@ -259,7 +258,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 			}
 			for (day in days) {
 				BoxWithConstraints(
-					Modifier.weight(1f).height(HOUR * 24).drawBehind {
+					Modifier.weight(1f).height(HOUR * 24).background(todayTint(showDayNames && day.date == today)).drawBehind {
 						for (h in 0 until 24) {
 							val y = HOUR.toPx() * h
 							drawLine(line, Offset(0f, y), Offset(size.width, y))
@@ -337,6 +336,23 @@ private fun Untimed(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (Agenda
 	)
 }
 
+// A day's label: today's in bold on a filled pill of the primary color, any other in [color].
+@Composable
+private fun TodayLabel(text: String, isToday: Boolean, color: Color) {
+	Text(
+		text,
+		if (isToday) Modifier.clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary).padding(horizontal = 6.dp) else Modifier,
+		style = MaterialTheme.typography.labelMedium,
+		fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+		color = if (isToday) MaterialTheme.colorScheme.onPrimary else color,
+	)
+}
+
+// The tint behind today's column or cell, & none behind any other.
+@Composable
+private fun todayTint(isToday: Boolean): Color =
+	if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = TODAY_TINT) else Color.Transparent
+
 // The Month grid: a row per week, a cell per day w/ its date & the titles that fit; a tap on a day
 // calls [onDay]. The days of the months before & after are dimmed.
 @Composable
@@ -361,20 +377,15 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 							.weight(1f)
 							.fillMaxHeight()
 							.drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f)) }
-							.background(if (inMonth) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
+							.background(if (inMonth) todayTint(day.date == today) else MaterialTheme.colorScheme.surfaceVariant)
 							.alpha(if (inMonth) 1f else DIM)
 							.clickable { onDay(day.date) }
 							.padding(2.dp),
 					) {
-						Text(
+						TodayLabel(
 							day.date.dayOfMonth.toString(),
-							style = MaterialTheme.typography.labelMedium,
-							fontWeight = if (day.date == today) FontWeight.Bold else FontWeight.Normal,
-							color = when {
-								day.date == today -> MaterialTheme.colorScheme.primary
-								inMonth -> MaterialTheme.colorScheme.onSurface
-								else -> MaterialTheme.colorScheme.onSurfaceVariant
-							},
+							day.date == today,
+							if (inMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
 						)
 						for (row in day.rows.take(3)) {
 							Text(row.entry.title, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
