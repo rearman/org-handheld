@@ -7,14 +7,15 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
-// One line of the agenda: the file // One line of the agenda: the entry, the time span the entry, the time span at which it shows on its day (none for an untimed
-// one or in the todo list), its priority's value, where a smaller value ranks higher, & Org's leaders
-// ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:").
+// One line of the agenda: the file & the entry, the time span at which it shows on its day (none for
+// an untimed one or in the todo list), Org's priority & urgency values (higher ranks first), & Org's
+// leaders ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:").
 data class AgendaRow(
 	val file: OrgFile,
 	val entry: Entry,
 	val time: LocalTime?,
 	val priority: Int,
+	val urgency: Int,
 	val leaders: List<String> = emptyList(),
 	val end: LocalTime? = null,
 )
@@ -29,14 +30,17 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 		const val SPAN = 7L
 
 		// The span from [from], which starts at today as org-agenda-start-on-weekday nil starts it. The
-		// todo list sorts as Org's todo strategy does (priority-down, then file order).
+		// todo list sorts as Org's todo strategy does (urgency-down, then file order), its urgency one
+		// above the priority, as org-agenda-get-todos sets it.
 		fun of(files: List<OrgFile>, from: LocalDate, today: LocalDate): Agenda {
-			val todos = files.flatMap { file -> file.entries.filter { it.inTodoList }.map { AgendaRow(file, it, null, priority(it, file)) } }
-			return Agenda(days(files, from, from.plusDays(SPAN - 1), today), todos.sortedBy { it.priority })
+			val todos = files.flatMap { file ->
+				file.entries.filter { it.inTodoList }.map { val p = priority(it, file); AgendaRow(file, it, null, p, p + 1) }
+			}
+			return Agenda(days(files, from, from.plusDays(SPAN - 1), today), todos.sortedByDescending { it.urgency })
 		}
 
 		// Each day from [from] to [to] w/ its rows, sorted as Org's default agenda strategy sorts them
-		// (time-up, priority-down, then file order).
+		// (time-up, urgency-down, then file order).
 		fun days(files: List<OrgFile>, from: LocalDate, to: LocalDate, today: LocalDate): List<AgendaDay> {
 			val byDate = LinkedHashMap<LocalDate, ArrayList<AgendaRow>>()
 			var d = from
@@ -50,11 +54,12 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 					val priority = priority(e, file)
 					for (date in e.agendaDates(from, to, today, warningDays)) {
 						val stamp = stampOn(e, date)
-						byDate[date]?.add(AgendaRow(file, e, stamp?.start, priority, leaders(e, date, today, warningDays), stamp?.end))
+						val urgency = urgency(e, date, today, warningDays, priority)
+						byDate[date]?.add(AgendaRow(file, e, stamp?.start, priority, urgency, leaders(e, date, today, warningDays), stamp?.end))
 					}
 				}
 			}
-			val dayOrder = compareBy<AgendaRow, LocalTime?>(nullsLast()) { it.time }.thenBy { it.priority }
+			val dayOrder = compareBy<AgendaRow, LocalTime?>(nullsLast()) { it.time }.thenByDescending { it.urgency }
 			return byDate.map { (date, rows) -> AgendaDay(date, rows.sortedWith(dayOrder)) }
 		}
 
@@ -82,6 +87,26 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 			return out
 		}
 
+		// Org's urgency of the entry's line on [d], from its priority value [p]: a SCHEDULED line
+		// 99 + the days since the written date + p (org-agenda-get-scheduled), a DEADLINE line p, plus
+		// on today the days since the written date (org-agenda-get-deadlines), & a timestamp, range, or
+		// sexp p. Org shows each kind as a line of its own; the one row here takes the highest.
+		private fun urgency(e: Entry, d: LocalDate, today: LocalDate, warningDays: Int, p: Int): Int {
+			var u = p
+			val due = d == today && !e.done
+			e.scheduled?.let {
+				if (it.planningDates(d, d, scheduled = true).isNotEmpty() || (due && it.pastDue(today, scheduled = true))) {
+					u = maxOf(u, 99 + ChronoUnit.DAYS.between(it.date, d).toInt() + p)
+				}
+			}
+			e.deadline?.let {
+				val shown = it.planningDates(d, d, scheduled = false).isNotEmpty() ||
+					(due && (it.pastDue(today, scheduled = false) || it.dueSoon(today, warningDays)))
+				if (shown) u = maxOf(u, p + if (d == today) ChronoUnit.DAYS.between(it.date, today).toInt() else 0)
+			}
+			return u
+		}
+
 		// The timed stamp that puts [e] on [d]: its SCHEDULED, its DEADLINE, or an active stamp of its
 		// text, in that order. A range or a sexp gives none, nor does a missed or coming date shown on
 		// today, as in Org.
@@ -91,9 +116,12 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 			return e.activeStamps.firstOrNull { it.start != null && it.occurrences(d, d).isNotEmpty() }
 		}
 
-		// The value of the entry's cookie as org-priority-to-value reads it (a number, else a letter's
-		// code), or the file's default priority for none.
-		fun priority(e: Entry, file: OrgFile): Int =
-			e.priority?.let { it.toIntOrNull() ?: it[0].code } ?: file.priorities.default
+		// Org's priority value, as org-get-priority gives it: 1000 times the distance of the entry's
+		// cookie (org-priority-to-value: a number, else a letter's code), or of the default for none,
+		// from the file's lowest priority. A higher value ranks first.
+		fun priority(e: Entry, file: OrgFile): Int {
+			val value = e.priority?.let { it.toIntOrNull() ?: it[0].code } ?: file.priorities.default
+			return 1000 * (file.priorities.lowest - value)
+		}
 	}
 }

@@ -57,12 +57,12 @@ object Filters {
 			for (e in file.entries) {
 				if (!e.inAgenda) continue
 				val hit = if (block.stuck) stuck(file, e) else matches(block, e)
-				if (hit) rows.add(AgendaRow(file, e, null, Agenda.priority(e, file)))
+				if (hit) Agenda.priority(e, file).let { p -> rows.add(AgendaRow(file, e, null, p, p)) }
 			}
 		}
-		if (!block.byTag) return BlockRows(block, rows.sortedBy { it.priority }.map { null to it })
+		if (!block.byTag) return BlockRows(block, rows.sortedByDescending { it.urgency }.map { null to it })
 		val order = compareBy<AgendaRow, String?>(nullsLast()) { lastTag(it.entry) }
-			.thenBy { it.priority }
+			.thenByDescending { it.priority }
 			.thenBy { effortMinutes(it.entry) ?: Int.MAX_VALUE }
 		return BlockRows(block, rows.sortedWith(order).map { lastTag(it.entry) to it })
 	}
