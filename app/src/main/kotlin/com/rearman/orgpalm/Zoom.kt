@@ -2,6 +2,7 @@ package com.rearman.orgpalm
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -92,6 +93,7 @@ fun Timeline(
 	focus: LocalDate,
 	onFocus: (LocalDate) -> Unit,
 	onOpen: (AgendaRow) -> Unit,
+	onShow: (AgendaRow) -> Unit,
 ) {
 	val today = LocalDate.now()
 	Column(Modifier.fillMaxSize()) {
@@ -116,15 +118,15 @@ fun Timeline(
 			),
 		) {
 			when (level) {
-				Level.AGENDA -> AgendaList(remember(files, focus, today) { Agenda.of(files, focus, today) }, onOpen)
+				Level.AGENDA -> AgendaList(remember(files, focus, today) { Agenda.of(files, focus, today) }, onOpen, onShow)
 				Level.DAY -> {
 					val days = remember(files, focus, today) { Agenda.days(files, focus, focus, today) }
-					CalendarGrid(days, today, showDayNames = false, onOpen)
+					CalendarGrid(days, today, showDayNames = false, onOpen, onShow)
 				}
 				Level.WEEK -> {
 					val start = weekOf(focus)
 					val days = remember(files, start, today) { Agenda.days(files, start, start.plusDays(6), today) }
-					CalendarGrid(days, today, showDayNames = true, onOpen)
+					CalendarGrid(days, today, showDayNames = true, onOpen, onShow)
 				}
 				Level.MONTH -> {
 					val first = focus.withDayOfMonth(1)
@@ -194,7 +196,7 @@ private fun Modifier.swipe(key: Any, back: () -> Unit, ahead: () -> Unit): Modif
 
 // The Day & Week grids: a band of untimed rows atop each day, then one hour grid for all the days.
 @Composable
-private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: Boolean, onOpen: (AgendaRow) -> Unit) {
+private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: Boolean, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val gutter = 44.dp
 	val line = MaterialTheme.colorScheme.outlineVariant
 	Column(Modifier.fillMaxSize()) {
@@ -214,7 +216,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 		Row(Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberScrollState()).padding(start = gutter)) {
 			for (day in days) {
 				Column(Modifier.weight(1f).padding(1.dp)) {
-					for (row in day.rows.filter { it.time == null }) Untimed(row, onOpen)
+					for (row in day.rows.filter { it.time == null }) Untimed(row, onOpen, onShow)
 				}
 			}
 		}
@@ -249,7 +251,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 								.height(HOUR * (to - from) / 60)
 								.padding(1.dp)
 								.clip(RoundedCornerShape(4.dp))
-								.clickable { onOpen(row) }
+								.combinedClickable(onLongClick = { onShow(row) }) { onOpen(row) }
 								.background(MaterialTheme.colorScheme.primaryContainer)
 								.padding(2.dp),
 						) {
@@ -289,14 +291,14 @@ private fun lanes(rows: List<AgendaRow>): List<Int> {
 }
 
 @Composable
-private fun Untimed(row: AgendaRow, onOpen: (AgendaRow) -> Unit) {
+private fun Untimed(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	Text(
 		(row.leaders + listOfNotNull(row.entry.state, row.entry.title)).joinToString(" "),
 		Modifier
 			.fillMaxWidth()
 			.padding(vertical = 1.dp)
 			.clip(RoundedCornerShape(4.dp))
-			.clickable { onOpen(row) }
+			.combinedClickable(onLongClick = { onShow(row) }) { onOpen(row) }
 			.background(MaterialTheme.colorScheme.secondaryContainer)
 			.padding(horizontal = 4.dp, vertical = 2.dp),
 		style = MaterialTheme.typography.labelSmall,

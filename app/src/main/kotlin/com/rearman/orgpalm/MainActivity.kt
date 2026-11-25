@@ -9,7 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -87,6 +87,7 @@ private fun App(model: AppModel = viewModel()) {
 	var editing by remember { mutableStateOf<Place?>(null) }
 	var capturing by remember { mutableStateOf(false) }
 	var filter by rememberSaveable { mutableStateOf<String?>(null) }
+	var reveal by remember { mutableStateOf<Place?>(null) }
 	val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let { model.addFolder(it) } }
 
 	// Alarms post through a notification, which API 33 & up asks the user to allow.
@@ -108,7 +109,7 @@ private fun App(model: AppModel = viewModel()) {
 			TopAppBar(
 				title = { Text(if (settingsShown) "Settings" else "org-palm") },
 				actions = {
-					if (!settingsShown) ViewsMenu(filter, filters) { filter = it }
+					if (!settingsShown) ViewsMenu(filter, filters) { filter = it; reveal = null }
 					TextButton(onClick = { showSettings = !showSettings }) { Text(if (showSettings) "Done" else "Settings") }
 				},
 			)
@@ -123,12 +124,13 @@ private fun App(model: AppModel = viewModel()) {
 				SettingsScreen(model, folders) { pick.launch(null) }
 			} else {
 				val open = { row: AgendaRow -> editing = Place(row.file, row.entry) }
+				val show = { row: AgendaRow -> reveal = Place(row.file, row.entry); filter = OUTLINE }
 				val saved = filters.firstOrNull { FILTER + it.name == filter }
 				when {
 					filter == EDIT_FILTERS -> FilterEditor(model) { filter = null }
-					filter == OUTLINE -> OutlineTree(files, Modifier.fillMaxSize(), null) { file, e -> editing = Place(file, e) }
-					saved != null -> FilterView(files, saved, open)
-					else -> Timeline(files, level, { level = it }, focus, { focus = it }, open)
+					filter == OUTLINE -> OutlineTree(files, Modifier.fillMaxSize(), null, bodies = true, reveal = reveal) { file, e -> editing = Place(file, e) }
+					saved != null -> FilterView(files, saved, open, show)
+					else -> Timeline(files, level, { level = it }, focus, { focus = it }, open, show)
 				}
 			}
 		}
@@ -143,16 +145,16 @@ private val DATE = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 private val TIME = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
-fun AgendaList(agenda: Agenda, onOpen: (AgendaRow) -> Unit) {
+fun AgendaList(agenda: Agenda, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	LazyColumn(Modifier.fillMaxSize()) {
 		for (day in agenda.days) {
 			item(key = day.date.toString()) {
 				Header("${DAY.format(day.date)}, ${DATE.format(day.date)}")
 			}
-			items(day.rows) { AgendaLine(it, onOpen) }
+			items(day.rows) { AgendaLine(it, onOpen, onShow) }
 		}
 		item(key = "todo") { Header("All TODO entries") }
-		items(agenda.todos) { AgendaLine(it, onOpen) }
+		items(agenda.todos) { AgendaLine(it, onOpen, onShow) }
 	}
 }
 
@@ -169,12 +171,13 @@ private fun Header(text: String) {
 	}
 }
 
-// Time, leaders, state, priority, title, tags (own, then inherited), & category. A tap opens the sheet.
+// Time, leaders, state, priority, title, tags (own, then inherited), & category. A tap opens the sheet,
+// & a long press shows the entry in the outline.
 @Composable
-private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit) {
+private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val e = row.entry
 	val muted = MaterialTheme.colorScheme.onSurfaceVariant
-	Column(Modifier.fillMaxWidth().clickable { onOpen(row) }.padding(horizontal = 16.dp, vertical = 6.dp)) {
+	Column(Modifier.fillMaxWidth().combinedClickable(onLongClick = { onShow(row) }) { onOpen(row) }.padding(horizontal = 16.dp, vertical = 6.dp)) {
 		Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
 			row.time?.let { Text(TIME.format(it), color = muted) }
 			for (leader in row.leaders) Text(leader, color = MaterialTheme.colorScheme.error)
@@ -194,7 +197,7 @@ private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit) {
 
 // A saved filter's blocks, each under its header; a byTag block heads each tag's rows w/ the tag.
 @Composable
-fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) -> Unit) {
+fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val today = LocalDate.now()
 	val blocks = remember(files, filter, today) { filter.blocks.map { Filters.rows(it, files, today) } }
 	LazyColumn(Modifier.fillMaxSize()) {
@@ -210,7 +213,7 @@ fun FilterView(files: List<OrgFile>, filter: SavedFilter, onOpen: (AgendaRow) ->
 					}
 				}
 				last = group
-				item(key = "block$i-row$n") { AgendaLine(row, onOpen) }
+				item(key = "block$i-row$n") { AgendaLine(row, onOpen, onShow) }
 			}
 		}
 	}
