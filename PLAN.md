@@ -17,7 +17,7 @@
 Each is marked in a code comment, w/ its upgrade path.
 
 * Agenda: an active stamp inside inline verbatim or code (`=...=`, `~...~`) still counts.
-* Diary sexps are read inside `<%%(...)>` & on a line that starts w/ `%%(`; only six forms are read (`diary-anniversary`, `diary-block`, `diary-cyclic`, `diary-date`, `diary-float`, `org-anniversary`), & their dates are tested one day at a time over the window. The `%d` of a sexp line's text is not filled w/ the years.
+* Diary sexps are read inside `<%%(...)>` & on a line that starts w/ `%%(`; only six forms are read (`diary-anniversary`, `diary-block`, `diary-cyclic`, `diary-date`, `diary-float`, `org-anniversary`), & their dates are tested one day at a time over the window. A sexp line's text shows whole where Org splits it at `; `, & a blank one shows the heading.
 * The `LOG_INTO_DRAWER` & `LOGGING` properties are not read; the settings & `#+STARTUP:` govern logging.
 * A checkbox inside a block still blocks a done state; a `#+KEY:` line inside a block still counts as a setting.
 * A `:CATEGORY:` in a drawer above the first heading, or set by `#+PROPERTY:`, is not read.

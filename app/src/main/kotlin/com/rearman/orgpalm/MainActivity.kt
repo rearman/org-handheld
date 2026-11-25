@@ -234,7 +234,7 @@ private fun AgendaLine(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (Age
 				for (leader in row.leaders) Text(leader, color = MaterialTheme.colorScheme.error)
 				e.state?.let { Text(it, fontWeight = FontWeight.Bold, color = if (e.done) muted else MaterialTheme.colorScheme.tertiary) }
 				e.priority?.let { Text("[#$it]", color = MaterialTheme.colorScheme.secondary) }
-				Text(e.title, Modifier.weight(1f))
+				Text(row.title, Modifier.weight(1f))
 			}
 			Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
 				Text(e.category, style = MaterialTheme.typography.labelMedium, color = muted)

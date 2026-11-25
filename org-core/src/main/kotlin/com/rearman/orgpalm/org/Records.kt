@@ -543,7 +543,7 @@ internal class AgendaText(
 				// A diary sexp line holds its sexp & the diary text, & no timestamp.
 				val line = DiarySexp.lineSexp(text)
 				if (line != null) {
-					DiarySexp.parse(line)?.let { sexps.add(it) }
+					DiarySexp.parse(line.first)?.let { sexps.add(it.withEntry(line.second)) }
 					continue
 				}
 				var rest = text

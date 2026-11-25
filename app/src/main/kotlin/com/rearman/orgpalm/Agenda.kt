@@ -10,7 +10,9 @@ import java.time.temporal.ChronoUnit
 // One line of the agenda: the file & the entry, the time span at which it shows on its day (none for
 // an untimed one or in the todo list), Org's priority & urgency values (higher ranks first), & Org's
 // leaders ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:"). [early] marks a row that
-// only a coming deadline's warning puts on its day, which the Day & Week grids leave out.
+// only a coming deadline's warning puts on its day, which the Day & Week grids leave out. [text] is the
+// text of a diary sexp line that applies on the row's day, which Org's agenda shows in place of the
+// heading, & [title] the one the views show.
 data class AgendaRow(
 	val file: OrgFile,
 	val entry: Entry,
@@ -20,7 +22,10 @@ data class AgendaRow(
 	val leaders: List<String> = emptyList(),
 	val end: LocalTime? = null,
 	val early: Boolean = false,
-)
+	val text: String? = null,
+) {
+	val title: String get() = text ?: entry.title
+}
 
 data class AgendaDay(val date: LocalDate, val rows: List<AgendaRow>)
 
@@ -58,7 +63,10 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 						val stamp = stampOn(e, date)
 						val urgency = urgency(e, date, today, warningDays, priority)
 						byDate[date]?.add(
-							AgendaRow(file, e, stamp?.start, priority, urgency, leaders(e, date, today, warningDays), stamp?.end, early(e, date, today, warningDays)),
+							AgendaRow(
+								file, e, stamp?.start, priority, urgency, leaders(e, date, today, warningDays), stamp?.end,
+								early(e, date, today, warningDays), e.sexps.firstNotNullOfOrNull { it.text(date) },
+							),
 						)
 					}
 				}

@@ -1,0 +1,6 @@
+# Written by tools/make-fixtures.el: sexp line, date, then the text the agenda shows.
+%%(org-anniversary 2000 6 10) Ann turns %d	2027-06-10	Ann turns 27
+%%(org-anniversary 2000 6 10) Ann's %d%s birthday	2031-06-10	Ann's 31st birthday
+%%(diary-anniversary 3 12 2014) %s years; 100%%	2027-03-12	13 years; 100%
+%%(diary-cyclic 10 11 20 2026) Dose %d	2026-11-30	Dose 1
+%%(diary-float t 4 2) Meeting %d	2026-11-12	Meeting %d

@@ -284,7 +284,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 								.padding(2.dp),
 						) {
 							Text(
-								(row.leaders + row.entry.title).joinToString(" "),
+								(row.leaders + row.title).joinToString(" "),
 								style = MaterialTheme.typography.labelSmall,
 								color = MaterialTheme.colorScheme.onPrimaryContainer,
 								overflow = TextOverflow.Ellipsis,
@@ -321,7 +321,7 @@ private fun lanes(rows: List<AgendaRow>): List<Int> {
 @Composable
 private fun Untimed(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	Text(
-		(row.leaders + listOfNotNull(row.entry.state, row.entry.title)).joinToString(" "),
+		(row.leaders + listOfNotNull(row.entry.state, row.title)).joinToString(" "),
 		Modifier
 			.fillMaxWidth()
 			.padding(vertical = 1.dp)
@@ -388,7 +388,7 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 							if (inMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
 						)
 						for (row in day.rows.take(3)) {
-							Text(row.entry.title, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+							Text(row.title, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
 						}
 						if (day.rows.size > 3) {
 							Text("+${day.rows.size - 3}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)

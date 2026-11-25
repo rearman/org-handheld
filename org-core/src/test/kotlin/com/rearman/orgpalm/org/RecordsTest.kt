@@ -248,6 +248,19 @@ class RecordsTest {
 		}
 	}
 
+	// A diary sexp line's text, w/ an anniversary's years or a cyclic count formatted in, is the text
+	// Org's agenda shows on a date the sexp applies, as sexps.txt records it.
+	@Test
+	fun sexpLineTextMatchesOrg() {
+		val rows = Fixtures.text("sexps.txt").lines().drop(1).filter { it.isNotEmpty() }
+		assertEquals(5, rows.size)
+		for (row in rows) {
+			val (text, date, shown) = row.split('\t')
+			val e = parse("* E\n$text\n").entries.single()
+			assertEquals(row, shown, e.sexps.firstNotNullOfOrNull { it.text(LocalDate.parse(date)) })
+		}
+	}
+
 	// A missed SCHEDULED or DEADLINE item shows on today until it is done, keyword or none, once its
 	// delay has run, & a deadline shows on today from its warning days ahead, the setting or its own
 	// cookie, as due.txt records Org's agenda for the week from the fixed today.

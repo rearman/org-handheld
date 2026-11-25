@@ -497,6 +497,32 @@ NAME-source.expected.org and NAME-target.expected.org."
 	(let ((coding-system-for-write 'utf-8-unix))
 		(write-region nil nil (expand-file-name "agenda.txt" mf-dir) nil 'silent)))
 
+;;; Sexp lines: the text the agenda shows for a diary sexp line on a date it applies.
+
+(defconst mf-sexp-lines
+	'(("%%(org-anniversary 2000 6 10) Ann turns %d" (6 10 2027))
+		("%%(org-anniversary 2000 6 10) Ann's %d%s birthday" (6 10 2031))
+		("%%(diary-anniversary 3 12 2014) %s years; 100%%" (3 12 2027))
+		("%%(diary-cyclic 10 11 20 2026) Dose %d" (11 30 2026))
+		("%%(diary-float t 4 2) Meeting %d" (11 12 2026)))
+	"Each sexp line, and a date (month day year) on which it applies.")
+
+(with-temp-buffer
+	(insert "# Written by tools/make-fixtures.el: sexp line, date, then the text the agenda shows.\n")
+	(dolist (row mf-sexp-lines)
+		(let ((file (make-temp-file "mf-sexp" nil ".org" (concat "* E\n" (car row) "\n")))
+					(date (cadr row)))
+			(unwind-protect
+					(mf-with-fixed-clock
+						(let ((items (org-agenda-get-day-entries file date :sexp)))
+							(insert (car row) "\t" (format "%04d-%02d-%02d" (nth 2 date) (nth 0 date) (nth 1 date)) "\t"
+											(mapconcat (lambda (i) (substring-no-properties (get-text-property 0 'txt i))) items "|") "\n")))
+				(let ((buf (find-buffer-visiting file)))
+					(when buf (with-current-buffer buf (set-buffer-modified-p nil)) (kill-buffer buf)))
+				(delete-file file))))
+	(let ((coding-system-for-write 'utf-8-unix))
+		(write-region nil nil (expand-file-name "sexps.txt" mf-dir) nil 'silent)))
+
 ;;; Repeats: the dates on which the agenda shows each timestamp.
 
 (defconst mf-repeats
