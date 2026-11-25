@@ -193,7 +193,8 @@ private fun Modifier.swipe(key: Any, back: () -> Unit, ahead: () -> Unit): Modif
 	}
 }
 
-// The Day & Week grids: a band of untimed rows atop each day, then one hour grid for all the days.
+// The Day & Week grids: a band of untimed rows atop each day, w/o the early warnings of coming
+// deadlines, then one hour grid for all the days.
 @Composable
 private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: Boolean, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	val gutter = 44.dp
@@ -215,7 +216,7 @@ private fun CalendarGrid(days: List<AgendaDay>, today: LocalDate, showDayNames: 
 		Row(Modifier.fillMaxWidth().heightIn(max = 140.dp).verticalScroll(rememberCenteredScrollState()).padding(start = gutter)) {
 			for (day in days) {
 				Column(Modifier.weight(1f).padding(1.dp)) {
-					for (row in day.rows.filter { it.time == null }) Untimed(row, onOpen, onShow)
+					for (row in day.rows.filter { it.time == null && !it.early }) Untimed(row, onOpen, onShow)
 				}
 			}
 		}

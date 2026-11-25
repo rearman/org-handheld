@@ -36,7 +36,7 @@ One home screen: a timeline that zooms through four levels, Agenda, Day, Week, &
 ```
 
 * **Agenda**: a day-by-day list of events, scheduled & due tasks, & open tasks, as org's agenda shows them. **Saved filters** make it dynamic: each filter is a named set of TODO states, tags, categories, & a date span, like an entry in `org-agenda-custom-commands`. The overflow menu picks the filter, & its filter editor adds, changes, & removes filters & their blocks. The starting filters mirror the user's two agenda commands: GTD Dashboard (today's agenda, the `inbox` tag, NEXT, WAITING, & stuck projects per `org-stuck-projects`) & Contexts (NEXT entries grouped by tag).
-* **Day**: an hour grid of one day, w/ untimed records in a band at the top.
+* **Day**: an hour grid of one day, w/ untimed records in a band at the top: those due on the day, & on today those past due. A deadline still to come, which the Agenda warns of ahead, stays out of the band.
 * **Week**: seven day columns on one hour grid.
 * **Month**: a grid of weeks; a tap on a day zooms to Day.
 * **Bottom sheet**: the one form for capture & edit, built from Material pickers. Its fields follow the entry (section 3): title, state, priority, start (`SCHEDULED`), due (`DEADLINE`), tags as chips, body, & the file & heading that hold it; an entry edited as an event adds date, time span, repeat, & alarm. A drag up expands the sheet to full height for a long body.

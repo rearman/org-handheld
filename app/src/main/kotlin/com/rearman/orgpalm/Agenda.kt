@@ -9,7 +9,8 @@ import java.time.temporal.ChronoUnit
 
 // One line of the agenda: the file & the entry, the time span at which it shows on its day (none for
 // an untimed one or in the todo list), Org's priority & urgency values (higher ranks first), & Org's
-// leaders ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:").
+// leaders ("Scheduled:", "Deadline:", "Sched.6x:", "3 d. ago:", "In 5 d.:"). [early] marks a row that
+// only a coming deadline's warning puts on its day, which the Day & Week grids leave out.
 data class AgendaRow(
 	val file: OrgFile,
 	val entry: Entry,
@@ -18,6 +19,7 @@ data class AgendaRow(
 	val urgency: Int,
 	val leaders: List<String> = emptyList(),
 	val end: LocalTime? = null,
+	val early: Boolean = false,
 )
 
 data class AgendaDay(val date: LocalDate, val rows: List<AgendaRow>)
@@ -55,7 +57,9 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 					for (date in e.agendaDates(from, to, today, warningDays)) {
 						val stamp = stampOn(e, date)
 						val urgency = urgency(e, date, today, warningDays, priority)
-						byDate[date]?.add(AgendaRow(file, e, stamp?.start, priority, urgency, leaders(e, date, today, warningDays), stamp?.end))
+						byDate[date]?.add(
+							AgendaRow(file, e, stamp?.start, priority, urgency, leaders(e, date, today, warningDays), stamp?.end, early(e, date, today, warningDays)),
+						)
 					}
 				}
 			}
@@ -87,6 +91,20 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 			return out
 		}
 
+		// Whether a coming deadline within its warning days is the only thing that puts [e] on [d]: no
+		// SCHEDULED date on [d] nor missed, no DEADLINE on [d], & no stamp, range, or sexp on [d].
+		private fun early(e: Entry, d: LocalDate, today: LocalDate, warningDays: Int): Boolean {
+			val deadline = e.deadline ?: return false
+			if (d != today || e.done || !deadline.dueSoon(today, warningDays)) return false
+			if (deadline.planningDates(d, d, scheduled = false).isNotEmpty()) return false
+			val scheduled = e.scheduled?.let { it.planningDates(d, d, scheduled = true).isNotEmpty() || it.pastDue(today, scheduled = true) } == true
+			return !scheduled && !stamped(e, d)
+		}
+
+		// Whether a stamp, a range, or a sexp of [e]'s text falls on [d].
+		private fun stamped(e: Entry, d: LocalDate): Boolean =
+			e.activeStamps.any { it.occurrences(d, d).isNotEmpty() } || e.ranges.any { d in it } || e.sexps.any { it.dates(d, d).isNotEmpty() }
+
 		// Org's urgency of the entry's line on [d], from its priority value [p]: a SCHEDULED line
 		// 99 + the days since the written date + p (org-agenda-get-scheduled), a DEADLINE line p, plus
 		// on today the days since the written date (org-agenda-get-deadlines), & a timestamp, range, or
@@ -104,9 +122,7 @@ data class Agenda(val days: List<AgendaDay>, val todos: List<AgendaRow>) {
 					(due && (it.pastDue(today, scheduled = false) || it.dueSoon(today, warningDays)))
 				if (shown) lines.add(p + if (d == today) ChronoUnit.DAYS.between(it.date, today).toInt() else 0)
 			}
-			val stamped = e.activeStamps.any { it.occurrences(d, d).isNotEmpty() } ||
-				e.ranges.any { d in it } || e.sexps.any { it.dates(d, d).isNotEmpty() }
-			if (stamped || lines.isEmpty()) lines.add(p)
+			if (stamped(e, d) || lines.isEmpty()) lines.add(p)
 			return lines.max()
 		}
 
