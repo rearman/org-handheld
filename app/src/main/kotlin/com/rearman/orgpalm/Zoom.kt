@@ -166,25 +166,29 @@ fun Timeline(
 			when (level) {
 				Level.AGENDA -> AgendaList(remember(files, focus, today) { Agenda.of(files, focus, today) }, onOpen, onShow)
 				Level.DAY -> {
-					val days = remember(files, focus, today) { Agenda.days(files, focus, focus, today) }
+					val days = remember(files, focus, today) { Agenda.days(files, focus, focus, today).withoutTodos() }
 					CalendarGrid(days, today, showDayNames = false, onOpen, onShow)
 				}
 				Level.WEEK -> {
 					val start = weekOf(focus)
-					val days = remember(files, start, today) { Agenda.days(files, start, start.plusDays(6), today) }
+					val days = remember(files, start, today) { Agenda.days(files, start, start.plusDays(6), today).withoutTodos() }
 					CalendarGrid(days, today, showDayNames = true, onOpen, onShow)
 				}
 				Level.MONTH -> {
 					val first = focus.withDayOfMonth(1)
 					val start = weekOf(first)
 					val end = weekOf(first.plusMonths(1).minusDays(1)).plusDays(6)
-					val days = remember(files, start, end, today) { Agenda.days(files, start, end, today) }
+					val days = remember(files, start, end, today) { Agenda.days(files, start, end, today).withoutTodos() }
 					MonthGrid(days, first.month.value, today) { onFocus(it); onLevel(Level.DAY) }
 				}
 			}
 		}
 	}
 }
+
+// The days w/o their todo items (any entry w/ a TODO keyword, open or done), which the Agenda & the
+// saved filters alone show.
+private fun List<AgendaDay>.withoutTodos(): List<AgendaDay> = map { day -> day.copy(rows = day.rows.filter { it.entry.state == null }) }
 
 private fun step(level: Level, d: LocalDate, sign: Long): LocalDate = when (level) {
 	Level.AGENDA -> d.plusDays(Agenda.SPAN * sign)
@@ -330,7 +334,7 @@ private fun WeekBand(days: List<AgendaDay>, today: LocalDate, gutter: Dp, onOpen
 				val col = maxWidth / days.size
 				bars.forEachIndexed { i, s ->
 					Bar(
-						spanText(s.row),
+						s.row.title,
 						Modifier.offset(x = col * s.first, y = SPAN_WEEK * lanes[i]).width(col * (s.last - s.first + 1)).height(SPAN_WEEK),
 						Modifier.combinedClickable(onLongClick = { onShow(s.row) }) { onOpen(s.row) },
 						MaterialTheme.typography.labelSmall.fontSize,
@@ -405,9 +409,6 @@ private fun Bar(text: String, place: Modifier, act: Modifier, fontSize: TextUnit
 	)
 }
 
-// A span's text: the state & title.
-private fun spanText(row: AgendaRow): String = listOfNotNull(row.entry.state, row.title).joinToString(" ")
-
 // The minute of the day at which a timed row ends: its end, else POINT_MINUTES after its start, at
 // most midnight.
 private fun minutesEnd(row: AgendaRow): Int {
@@ -432,7 +433,7 @@ private fun lanes(rows: List<AgendaRow>): List<Int> {
 @Composable
 private fun Untimed(row: AgendaRow, onOpen: (AgendaRow) -> Unit, onShow: (AgendaRow) -> Unit) {
 	Text(
-		(row.leaders + listOfNotNull(row.entry.state, row.title)).joinToString(" "),
+		(row.leaders + row.title).joinToString(" "),
 		Modifier
 			.fillMaxWidth()
 			.padding(vertical = 1.dp)
@@ -523,7 +524,7 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 				val col = maxWidth / 7
 				bars.forEachIndexed { i, s ->
 					Bar(
-						spanText(s.row),
+						s.row.title,
 						Modifier
 							.offset(x = col * s.first, y = MONTH_PAD + MONTH_DATE + SPAN_MONTH * lanes[i])
 							.width(col * (s.last - s.first + 1))
