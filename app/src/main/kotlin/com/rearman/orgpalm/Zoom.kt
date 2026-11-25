@@ -383,8 +383,8 @@ private fun spanLanes(spans: List<Span>): List<Int> {
 	}
 }
 
-// A bar of one line of [text], centered in its height, on the untimed rows' color, for a span.
-// [place] sets its place & size, & [act] (after the clip, for the ripple's
+// A bar of one line of [text], centered in its height, on the untimed rows' color: a span's, or an
+// item of a Month cell. [place] sets its place & size, & [act] (after the clip, for the ripple's
 // shape) takes its taps. The line is as tall as the font, lest the default style's taller line
 // overrun the bar.
 @Composable
@@ -464,9 +464,9 @@ private fun TodayLabel(text: String, isToday: Boolean, color: Color) {
 private fun todayTint(isToday: Boolean): Color =
 	if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = TODAY_TINT) else Color.Transparent
 
-// The Month grid: a row per week, a cell per day w/ its date & the titles that fit, & the week's spans
-// as bars over their days below the dates; a tap on a day calls [onDay]. The days of the months
-// before & after are dimmed.
+// The Month grid: a row per week, a cell per day w/ its date & the titles that fit, each in a bar, &
+// the week's spans as bars over their days below the dates; a tap on a day calls [onDay]. The days
+// of the months before & after are dimmed.
 @Composable
 private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay: (LocalDate) -> Unit) {
 	val line = MaterialTheme.colorScheme.outlineVariant
@@ -505,12 +505,13 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 									if (inMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
 								)
 							}
-							// The spans' bars take the lanes below the date; the other rows fill the rest of three lines.
+							// The spans' bars take the lanes below the date; the other rows, each in a bar
+							// of its own, fill the rest of three lines.
 							Spacer(Modifier.height(SPAN_MONTH * count))
 							val others = day.rows.filterNot { inSpan(it, day.date) }
 							val room = maxOf(0, 3 - count)
 							for (row in others.take(room)) {
-								Text(row.title, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+								Bar(row.title, Modifier.fillMaxWidth().height(SPAN_MONTH), Modifier, 10.sp)
 							}
 							if (others.size > room) {
 								Text("+${others.size - room}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
