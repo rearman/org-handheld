@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -327,8 +329,8 @@ private fun WeekBand(days: List<AgendaDay>, today: LocalDate, gutter: Dp, onOpen
 			BoxWithConstraints(Modifier.fillMaxWidth().height(SPAN_WEEK * count)) {
 				val col = maxWidth / days.size
 				bars.forEachIndexed { i, s ->
-					SpanBar(
-						s.row,
+					Bar(
+						spanText(s.row),
 						Modifier.offset(x = col * s.first, y = SPAN_WEEK * lanes[i]).width(col * (s.last - s.first + 1)).height(SPAN_WEEK),
 						Modifier.combinedClickable(onLongClick = { onShow(s.row) }) { onOpen(s.row) },
 						MaterialTheme.typography.labelSmall.fontSize,
@@ -381,24 +383,30 @@ private fun spanLanes(spans: List<Span>): List<Int> {
 	}
 }
 
-// A span's bar: the state & title on one line, on the untimed rows' color; [place] sets it over its
-// days, & [act] (after the clip, for the ripple's shape) takes its taps.
+// A bar of one line of [text], centered in its height, on the untimed rows' color, for a span.
+// [place] sets its place & size, & [act] (after the clip, for the ripple's
+// shape) takes its taps. The line is as tall as the font, lest the default style's taller line
+// overrun the bar.
 @Composable
-private fun SpanBar(row: AgendaRow, place: Modifier, act: Modifier, fontSize: TextUnit) {
+private fun Bar(text: String, place: Modifier, act: Modifier, fontSize: TextUnit) {
 	Text(
-		listOfNotNull(row.entry.state, row.title).joinToString(" "),
+		text,
 		place
 			.padding(1.dp)
 			.clip(RoundedCornerShape(4.dp))
 			.then(act)
 			.background(MaterialTheme.colorScheme.secondaryContainer)
-			.padding(horizontal = 4.dp),
-		fontSize = fontSize,
+			.padding(horizontal = 4.dp)
+			.wrapContentHeight(Alignment.CenterVertically),
+		style = LocalTextStyle.current.copy(fontSize = fontSize, lineHeight = fontSize),
 		color = MaterialTheme.colorScheme.onSecondaryContainer,
 		maxLines = 1,
 		overflow = TextOverflow.Ellipsis,
 	)
 }
+
+// A span's text: the state & title.
+private fun spanText(row: AgendaRow): String = listOfNotNull(row.entry.state, row.title).joinToString(" ")
 
 // The minute of the day at which a timed row ends: its end, else POINT_MINUTES after its start, at
 // most midnight.
@@ -513,8 +521,8 @@ private fun MonthGrid(days: List<AgendaDay>, month: Int, today: LocalDate, onDay
 				// The bars take no taps, so that a tap on one opens its day as a tap on the cell does.
 				val col = maxWidth / 7
 				bars.forEachIndexed { i, s ->
-					SpanBar(
-						s.row,
+					Bar(
+						spanText(s.row),
 						Modifier
 							.offset(x = col * s.first, y = MONTH_PAD + MONTH_DATE + SPAN_MONTH * lanes[i])
 							.width(col * (s.last - s.first + 1))
