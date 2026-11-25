@@ -140,11 +140,11 @@ private fun App(model: AppModel = viewModel()) {
 	Scaffold(
 		topBar = {
 			TopAppBar(
-				// The level chips sit in the title's place on the timeline, to leave the body more room.
+				// The date bar sits in the title's place on the timeline, to leave the body more room.
 				title = {
 					when {
 						settingsShown -> Text("Settings")
-						filter == null -> LevelChips(level) { level = it }
+						filter == null -> DateBar(level, focus) { focus = it }
 					}
 				},
 				actions = {

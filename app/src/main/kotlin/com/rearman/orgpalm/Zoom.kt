@@ -6,7 +6,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,11 +19,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -88,18 +84,44 @@ private val TITLE_SHORT = DateTimeFormatter.ofPattern("MMM d")
 private val TITLE_MONTH = DateTimeFormatter.ofPattern("MMMM yyyy")
 private val DAY_SHORT = DateTimeFormatter.ofPattern("EEE d")
 
-// The chips that pick the level, which the top bar holds; they scroll sideways where the bar is narrow.
-@OptIn(ExperimentalMaterial3Api::class)
+// The bar that steps the date, which the top bar holds: the arrows close about the title, & Today
+// after them, shown only while today is out of view.
 @Composable
-fun LevelChips(level: Level, onLevel: (Level) -> Unit) {
-	Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-		for (l in Level.entries) FilterChip(selected = l == level, onClick = { onLevel(l) }, label = { Text(l.label) })
+fun DateBar(level: Level, focus: LocalDate, onFocus: (LocalDate) -> Unit) {
+	val today = LocalDate.now()
+	Row(verticalAlignment = Alignment.CenterVertically) {
+		Arrow("<") { onFocus(step(level, focus, -1)) }
+		Text(
+			title(level, focus),
+			Modifier.weight(1f, fill = false),
+			style = MaterialTheme.typography.titleMedium,
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+		)
+		Arrow(">") { onFocus(step(level, focus, 1)) }
+		if (!shows(level, focus, today)) TextButton(onClick = { onFocus(today) }) { Text("Today") }
 	}
 }
 
-// The timeline: the bar that steps the date, & the level itself. The date in view ([focus]) is kept
-// across a change of level.
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Arrow(text: String, onClick: () -> Unit) {
+	Text(
+		text,
+		Modifier.clip(RoundedCornerShape(4.dp)).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 12.dp),
+		style = MaterialTheme.typography.titleMedium,
+		color = MaterialTheme.colorScheme.primary,
+	)
+}
+
+// Whether the level at [focus] shows [today].
+private fun shows(level: Level, focus: LocalDate, today: LocalDate): Boolean = when (level) {
+	Level.AGENDA -> !today.isBefore(focus) && today.isBefore(focus.plusDays(Agenda.SPAN))
+	Level.DAY -> today == focus
+	Level.WEEK -> weekOf(today) == weekOf(focus)
+	Level.MONTH -> today.withDayOfMonth(1) == focus.withDayOfMonth(1)
+}
+
+// The timeline: the level itself; the date in view ([focus]) is kept across a change of level.
 @Composable
 fun Timeline(
 	files: List<OrgFile>,
@@ -112,12 +134,6 @@ fun Timeline(
 ) {
 	val today = LocalDate.now()
 	Column(Modifier.fillMaxSize()) {
-		Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-			TextButton(onClick = { onFocus(step(level, focus, -1)) }) { Text("<") }
-			Text(title(level, focus), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-			TextButton(onClick = { onFocus(today) }) { Text("Today") }
-			TextButton(onClick = { onFocus(step(level, focus, 1)) }) { Text(">") }
-		}
 		val levels = Level.entries
 		Box(
 			Modifier.weight(1f).fillMaxWidth().pinch(level, {
