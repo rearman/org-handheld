@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -23,15 +24,16 @@ import com.rearman.orgpalm.org.OrgFile
 // One line of the tree: a file's name, a heading, or a heading's body.
 private sealed class Line(val key: String) {
 	class FileName(key: String, val file: OrgFile, val isOpen: Boolean) : Line(key)
-	class Heading(key: String, val file: OrgFile, val entry: Entry, val toggles: Boolean, val isOpen: Boolean) : Line(key)
+	class Heading(key: String, val file: OrgFile, val index: Int, val entry: Entry, val toggles: Boolean, val isOpen: Boolean) : Line(key)
 	class Body(key: String, val entry: Entry) : Line(key)
 }
 
 // The outline browser (PLAN.md phase 7): each file, & its headings as a collapsible tree. A file opens
 // to its top-level headings, as Org's overview shows them, & each heading opens to its body, when
-// [bodies] is set, & its children. A tap on a file's name calls [onFile] (the top level of the file,
-// for the picker), & on a heading [onHeading]; the [+] & [-] marks open & close. [reveal] opens the
-// tree to its heading, & that heading itself, & scrolls it into view.
+// [bodies] is set, & its children, one level a time: a close closes all below it. A tap on a file's
+// name calls [onFile] (the top level of the file, for the picker), & on a heading [onHeading]; the
+// [+] & [-] marks open & close. [reveal] opens the tree to its heading, & that heading itself, &
+// scrolls it into view.
 @Composable
 fun OutlineTree(
 	files: List<OrgFile>,
@@ -61,7 +63,7 @@ fun OutlineTree(
 			val hasBody = bodies && e.body.isNotBlank()
 			val headingOpen = open[key] == true
 			if (hasChildren && !headingOpen) hideBelow = e.level
-			lines += Line.Heading("h:$key$id", file, e, hasChildren || hasBody, headingOpen)
+			lines += Line.Heading("h:$key$id", file, i, e, hasChildren || hasBody, headingOpen)
 			if (hasBody && headingOpen) lines += Line.Body("b:$key$id", e)
 		}
 	}
@@ -73,16 +75,16 @@ fun OutlineTree(
 				when (line) {
 					is Line.FileName -> Row(verticalAlignment = Alignment.CenterVertically) {
 						val fileKey = line.file.path
-						Toggle(line.isOpen) { open[fileKey] = !line.isOpen }
+						Toggle(line.isOpen) { if (line.isOpen) closeFile(open, fileKey) else open[fileKey] = true }
 						Text(
 							line.file.path,
-							Modifier.weight(1f).let { m -> onFile?.let { f -> m.clickable { f(line.file) } } ?: m.clickable { open[fileKey] = !line.isOpen } }.padding(8.dp),
+							Modifier.weight(1f).let { m -> onFile?.let { f -> m.clickable { f(line.file) } } ?: m.clickable { if (line.isOpen) closeFile(open, fileKey) else open[fileKey] = true } }.padding(8.dp),
 							style = MaterialTheme.typography.titleSmall,
 						)
 					}
 					is Line.Heading -> Row(Modifier.fillMaxWidth().padding(start = (16 * line.entry.level).dp), verticalAlignment = Alignment.CenterVertically) {
 						val key = "${line.file.path}#${line.entry.anchor.lineIndex}"
-						if (line.toggles) Toggle(line.isOpen) { open[key] = !line.isOpen } else Text("", Modifier.width(48.dp))
+						if (line.toggles) Toggle(line.isOpen) { if (line.isOpen) closeHeading(open, line.file, line.index) else open[key] = true } else Text("", Modifier.width(48.dp))
 						Text(
 							listOfNotNull(line.entry.state, line.entry.title).joinToString(" "),
 							Modifier.weight(1f).clickable { onHeading(line.file, line.entry) }.padding(8.dp),
@@ -99,6 +101,22 @@ fun OutlineTree(
 			}
 		}
 	}
+}
+
+// Closes a file & every heading in it.
+private fun closeFile(open: SnapshotStateMap<String, Boolean>, path: String) {
+	open.keys.filter { it == path || it.startsWith("$path#") }.forEach { open.remove(it) }
+}
+
+// Closes the heading at [index] of [file] & every heading below it.
+private fun closeHeading(open: SnapshotStateMap<String, Boolean>, file: OrgFile, index: Int) {
+	val entries = file.entries
+	val level = entries[index].level
+	var j = index
+	do {
+		open.remove("${file.path}#${entries[j].anchor.lineIndex}")
+		j++
+	} while (j < entries.size && entries[j].level > level)
 }
 
 // The open marks that show [place]'s heading opened: its file, each ancestor, & the heading itself.
